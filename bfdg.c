@@ -186,6 +186,9 @@ int main(){
             }
             while(bfcode[codepos]!='+' && bfcode[codepos]!='-' && bfcode[codepos]!='<' && bfcode[codepos]!='>' && bfcode[codepos]!=',' && bfcode[codepos]!='.' && bfcode[codepos]!='[' && bfcode[codepos]!=']'){
                 codepos++;
+                if(bfcode[codepos]=='\n'){
+                    linenum++;
+                }
                 if(bfcode+codepos==codepend){
                     break;
                 }
@@ -197,7 +200,7 @@ int main(){
         }
         fflush(stdin);
         //continue, forward, backward, exit, run, change tape data format, change tape, handle lack of input
-        Sleep(500);
+        // Sleep(500);
         if(bfcode+codepos>=codepend){
             break;
         }
