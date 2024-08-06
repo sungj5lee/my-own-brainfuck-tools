@@ -1,4 +1,8 @@
 input: string
+
+for now
+add or remove the pluses in front of the loops to use them
+
 00>
 ++++++++ ++++++++ ++++++++ ++++++++ 
 ++++++++ ++++ comma >
@@ -19,12 +23,24 @@ input: string
 ++++++++ ++++++++ ++++++++ ++++++++ 
 ++++++++ +++ plus >
 
-+[-
+write on tape loosely
+[-
     ,-------- --
     [
         ++++++++ ++
         [<.>-]
         <<<.>>>
+        ,-------- --
+    ]
+]
+
+print loosely
++[-
+    ,-------- --
+    [
+        ++++++++ ++
+        [<.>-]
+        <<<<<<<.>.>>>>.<<<.>>>>>
         ,-------- --
     ]
 ]
