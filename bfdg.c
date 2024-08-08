@@ -1,7 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-enum{
+typedef struct commandstrt
+{
+    int steps;
+    int direction;
+    char other[10];
+} commandstruct;
+
+enum
+{
     MODE,
     CODEPOS,
     CODEENDPOS,
@@ -14,27 +22,28 @@ enum{
 };
 
 int isbfcode(char);
-void drawcode(int*, char*);
-void drawtape(int*, char*);
-void drawin(int*, char*);
-void drawout(int*, char*);
+void drawcode(int *, char *);
+void drawtape(int *, char *);
+void drawin(int *, char *);
+void drawout(int *, char *);
 void drawcommand();
-char *takecommand();
-void docommand(char*, int*, char*, char*, char*, char*);
+commandstruct takecommand();
+void docommand(commandstruct, int *, char *, char *, char *, char *);
 
-int main(){
+int main()
+{
     FILE *fp;
     char tape[20000];
     char bfcode[20000];
-    char input[1000]={0};
-    char output[1000]={0};
-    char *tapep=tape;
-    char *codep=bfcode;
-    char *codepend=bfcode;
+    char input[1000] = {0};
+    char output[1000] = {0};
+    char *tapep = tape;
+    char *codep = bfcode;
+    char *codepend = bfcode;
     char fn[100];
     char c;
     int paramarr[9];
-    int loopflag=0;
+    int loopflag = 0;
     int i, j;
 
     printf("file name:\n");
@@ -45,55 +54,62 @@ int main(){
     scanf("%s", input);
     fflush(stdin);
 
-    fp=fopen(fn, "r");
-    c=fgetc(fp);
-    while(c!=-1){
-        if(c=='\n'){
+    fp = fopen(fn, "r");
+    c = fgetc(fp);
+    while (c != -1)
+    {
+        if (c == '\n')
+        {
             paramarr[LINENUM]++;
         }
-        //syntax error check
-        if(c=='[')
+        // syntax error check
+        if (c == '[')
             loopflag++;
-        if(c==']')
+        if (c == ']')
             loopflag--;
-        if(loopflag<0){
+        if (loopflag < 0)
+        {
             printf("syntax error at line %d, extra ']'", paramarr[LINENUM]);
             fclose(fp);
             return 0;
         }
-        *codepend=c;
-        codepend=codepend+1;
-        c=fgetc(fp);
+        *codepend = c;
+        codepend = codepend + 1;
+        c = fgetc(fp);
     }
     fclose(fp);
 
-    //syntax error check
-    if(loopflag>0){
+    // syntax error check
+    if (loopflag > 0)
+    {
         printf("syntax error: extra '['");
         return 0;
     }
 
-    paramarr[MODE]=0;
-    paramarr[CODEPOS]=0;
-    paramarr[CODEENDPOS]=codepend-bfcode;
-    paramarr[TAPEPOS]=0;
-    paramarr[TAPENUM]=0;
-    paramarr[INPUTPOS]=0;
-    paramarr[OUTPOS]=0;
-    paramarr[LINENUM]=1;
-    paramarr[LINESTARTNUM]=0;
+    paramarr[MODE] = 0;
+    paramarr[CODEPOS] = 0;
+    paramarr[CODEENDPOS] = codepend - bfcode;
+    paramarr[TAPEPOS] = 0;
+    paramarr[TAPENUM] = 0;
+    paramarr[INPUTPOS] = 0;
+    paramarr[OUTPOS] = 0;
+    paramarr[LINENUM] = 1;
+    paramarr[LINESTARTNUM] = 0;
 
-    codep=bfcode;
-    while(!isbfcode(*codep)){
-        codep=codep+1;
+    codep = bfcode;
+    while (!isbfcode(*codep))
+    {
+        codep = codep + 1;
     }
-    paramarr[CODEPOS]=codep-bfcode;
-    if(codep==codepend){
-        paramarr[MODE]=-1;
+    paramarr[CODEPOS] = codep - bfcode;
+    if (codep == codepend)
+    {
+        paramarr[MODE] = -1;
     }
 
-    while(paramarr[MODE]!=-1){
-        //draw
+    while (paramarr[MODE] != -1)
+    {
+        // draw
         drawcode(paramarr, bfcode);
         drawtape(paramarr, tape);
         drawin(paramarr, input);
@@ -108,222 +124,290 @@ int main(){
     return 0;
 }
 
-int isbfcode(char c){
-    switch(c){
-        case '+':
-            return 1;
-        case '-':
-            return 1;
-        case '<':
-            return 1;
-        case '>':
-            return 1;
-        case ',':
-            return 1;
-        case '.':
-            return 1;
-        case '[':
-            return 1;
-        case ']':
-            return 1;
-        default:
-            return 0;
+int isbfcode(char c)
+{
+    switch (c)
+    {
+    case '+':
+        return 1;
+    case '-':
+        return 1;
+    case '<':
+        return 1;
+    case '>':
+        return 1;
+    case ',':
+        return 1;
+    case '.':
+        return 1;
+    case '[':
+        return 1;
+    case ']':
+        return 1;
+    default:
+        return 0;
     }
 }
 
-void drawcode(int *param, char *code){
+void drawcode(int *param, char *code)
+{
     int i;
-    int codepos=param[CODEPOS];
-    int codeendpos=param[CODEENDPOS];
-    int linenum=param[LINENUM];
-    int linestartnum=param[LINESTARTNUM];
-    char *p=code+linestartnum;
+    int codepos = param[CODEPOS];
+    int codeendpos = param[CODEENDPOS];
+    int linenum = param[LINENUM];
+    int linestartnum = param[LINESTARTNUM];
+    char *p = code + linestartnum;
 
-    for(i=0; i<3; i++){
-        if(p-code<codeendpos && i==0){
-            printf("%d\t", linenum+i);
+    for (i = 0; i < 3; i++)
+    {
+        if (p - code < codeendpos && i == 0)
+        {
+            printf("%d\t", linenum + i);
         }
-        else if(*p=='\n'){
-            printf("%d\t", linenum+i);
-            p=p+1;
+        else if (*p == '\n')
+        {
+            printf("%d\t", linenum + i);
+            p = p + 1;
         }
-        while(p-code<codeendpos && *p!='\n'){
-            if(p-code==codepos)
+        while (p - code < codeendpos && *p != '\n')
+        {
+            if (p - code == codepos)
                 printf("{%c}", *p);
             else
                 printf("%c", *p);
-            p=p+1;
+            p = p + 1;
         }
         printf("\n");
     }
 }
 
-void drawtape(int *param, char *tape){
-    int tapepos=param[TAPEPOS];
-    int tapenum=param[TAPENUM];
+void drawtape(int *param, char *tape)
+{
+    int tapepos = param[TAPEPOS];
+    int tapenum = param[TAPENUM];
     int i;
 
     printf("TAPE\t");
-    for(i=tapenum; i<30+tapenum; i++){
-        if(i==tapepos)
+    for (i = tapenum; i < 30 + tapenum; i++)
+    {
+        if (i == tapepos)
             printf("{");
-        else if(i==tapepos+1)
+        else if (i == tapepos + 1)
             printf("}");
-        else if(i==tapenum&&tapenum!=0)
-                printf(" ");
+        else if (i == tapenum && tapenum != 0)
+            printf(" ");
         else
             printf("|");
 
-        if(tape[i]>99){
+        if (tape[i] > 99)
+        {
             printf("%d", tape[i]);
         }
-        else{
+        else
+        {
             printf(" %02d", tape[i]);
         }
     }
 
-    if(tapepos==tapenum+30){
+    if (tapepos == tapenum + 30)
+    {
         printf("}");
     }
-    else{
+    else
+    {
         printf("|");
     }
     printf("\n");
 
     printf("    \t");
-    for(i=0; i<tapepos-tapenum; i++){
+    for (i = 0; i < tapepos - tapenum; i++)
+    {
         printf("    ");
     }
     printf("  ^\n");
 }
 
-void drawin(int *param, char *input){
-    int inputpos=param[INPUTPOS];
-    char *ip=input;
+void drawin(int *param, char *input)
+{
+    int inputpos = param[INPUTPOS];
+    char *ip = input;
 
     printf("INPUT\t");
-    while(*ip!=0){
-        if(ip-input==inputpos){
+    while (*ip != 0)
+    {
+        if (ip - input == inputpos)
+        {
             printf("{%c}", *ip);
         }
-        else{
+        else
+        {
             printf("%c", *ip);
         }
-        ip=ip+1;
+        ip = ip + 1;
     }
     printf("\n");
 }
 
-void drawout(int *param, char *output){
-    int outpos=param[OUTPOS];
-    char *op=output;
+void drawout(int *param, char *output)
+{
+    int outpos = param[OUTPOS];
+    char *op = output;
 
     printf("OUTPUT\t");
-    while(*op!=0){
-        if(op-output==outpos){
+    while (*op != 0)
+    {
+        if (op - output == outpos)
+        {
             printf("{%c}", *op);
         }
-        else{
+        else
+        {
             printf("%c", *op);
         }
-        op=op+1;
+        op = op + 1;
     }
     printf("\n");
 }
 
-void drawcommand(){
+void drawcommand()
+{
     printf("command: ");
 }
 
-char *takecommand(){
-    char *commandstr=malloc(sizeof(char)*10);
+commandstruct takecommand()
+{
+    char c;
+    char commandstr[100];
+    char *commandp=commandstr;
+    commandstruct command = {1, 1, "\n"};
+    int scancheck;
 
-    // scanf("%s", commandstr);
-    fgets(commandstr, 3, stdin);
-    fflush(stdin);
-
-    return commandstr;
-}
-
-void docommand(char *command, int *param, char *code, char *tape, char *input, char *output){
-    int loopstack=0;
-
-    if(command[0]=='\n'){
-        switch (code[param[CODEPOS]])
-        {
-        case '+':
-            tape[param[TAPEPOS]]++;
-            break;
-        
-        case '-':
-            tape[param[TAPEPOS]]--;
-            break;
-        
-        case '<':
-            if(param[TAPEPOS]>0){
-                param[TAPEPOS]--;
-            }
-            break;
-        
-        case '>':
-            param[TAPEPOS]++;
-            break;
-        
-        case '.':
-            output[param[OUTPOS]]=tape[param[TAPEPOS]];
-            param[OUTPOS]++;
-            break;
-        
-        case ',':
-            tape[param[TAPEPOS]]=input[param[INPUTPOS]];
-            param[INPUTPOS]++;
-            break;
-        
-        case '[':
-            if(tape[param[TAPEPOS]]==0){
-                loopstack=1;
-                while(loopstack!=0){
-                    param[CODEPOS]++;
-                    if(code[param[CODEPOS]]=='['){
-                        loopstack++;
-                    }
-                    if(code[param[CODEPOS]]==']'){
-                        loopstack--;
-                    }
-                }
-            }
-            break;
-        
-        case ']':
-            if(tape[param[TAPEPOS]]!=0){
-                loopstack=-1;
-                while(loopstack!=0){
-                    param[CODEPOS]--;
-                    if(code[param[CODEPOS]]=='['){
-                        loopstack++;
-                    }
-                    if(code[param[CODEPOS]]==']'){
-                        loopstack--;
-                    }
-                }
-            }
-            break;
-        
-        default:
+    c=getc(stdin);
+    while('0'<=c&&c<='9'){
+        *commandp=c;
+        commandp=commandp+1;
+        c=getc(stdin);
+    }
+    commandp=command.other;
+    while(1){
+        *commandp=c;
+        commandp=commandp+1;
+        if(c=='\n'){
             break;
         }
+        c=getc(stdin);
+    }
+    scancheck=sscanf(commandstr, "%d", &command.steps);
+    fflush(stdin);
+    if(scancheck==0){
+        command.steps=1;
+    }
+    if(command.steps<0){
+        command.direction=-1;
+        command.steps=command.steps*-1;
     }
 
-    do{
-        param[CODEPOS]++;
-        if(param[CODEPOS]==param[CODEENDPOS]){
-            param[MODE]=-1;
-            break;
+    return command;
+}
+
+void docommand(commandstruct command, int *param, char *code, char *tape, char *input, char *output)
+{
+    int loopstack = 0;
+    int i;
+
+    if (command.direction != 0)
+    {
+        for (i = 0; i < command.steps; i++)
+        {
+            loopstack=0;
+
+            switch (code[param[CODEPOS]])
+            {
+            case '+':
+                tape[param[TAPEPOS]]++;
+                break;
+
+            case '-':
+                tape[param[TAPEPOS]]--;
+                break;
+
+            case '<':
+                if (param[TAPEPOS] > 0)
+                {
+                    param[TAPEPOS]--;
+                }
+                break;
+
+            case '>':
+                param[TAPEPOS]++;
+                break;
+
+            case '.':
+                output[param[OUTPOS]] = tape[param[TAPEPOS]];
+                param[OUTPOS]++;
+                break;
+
+            case ',':
+                tape[param[TAPEPOS]] = input[param[INPUTPOS]];
+                param[INPUTPOS]++;
+                break;
+
+            case '[':
+                if (tape[param[TAPEPOS]] == 0)
+                {
+                    loopstack = 1;
+                    while (loopstack != 0)
+                    {
+                        param[CODEPOS]++;
+                        if (code[param[CODEPOS]] == '[')
+                        {
+                            loopstack++;
+                        }
+                        if (code[param[CODEPOS]] == ']')
+                        {
+                            loopstack--;
+                        }
+                    }
+                }
+                break;
+
+            case ']':
+                if (tape[param[TAPEPOS]] != 0)
+                {
+                    loopstack = -1;
+                    while (loopstack != 0)
+                    {
+                        param[CODEPOS]--;
+                        if (code[param[CODEPOS]] == '[')
+                        {
+                            loopstack++;
+                        }
+                        if (code[param[CODEPOS]] == ']')
+                        {
+                            loopstack--;
+                        }
+                    }
+                }
+                break;
+
+            default:
+                break;
+            }
+
+            do
+            {
+                param[CODEPOS]++;
+                if (param[CODEPOS] == param[CODEENDPOS])
+                {
+                    param[MODE] = -1;
+                    break;
+                }
+                if (code[param[CODEPOS] - 1] == '\n')
+                {
+                    param[LINENUM]++;
+                    param[LINESTARTNUM] = param[CODEPOS];
+                }
+            } while (!isbfcode(code[param[CODEPOS]]));
         }
-        if(code[param[CODEPOS]-1]=='\n'){
-            param[LINENUM]++;
-            param[LINESTARTNUM]=param[CODEPOS];
-        }
-    }while(!isbfcode(code[param[CODEPOS]]));
-    free(command);
+    }
 }
