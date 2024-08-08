@@ -16,6 +16,7 @@ enum
     TAPEPOS,
     TAPENUM,
     INPUTPOS,
+    INPUTENDPOS,
     OUTPOS,
     LINENUM,
     LINESTARTNUM
@@ -37,7 +38,7 @@ int main()
     char bfcode[20000];
     char input[1000] = {0};
     char output[1000] = {0};
-    char *tapep = tape;
+    char *inputend = input;
     char *codep = bfcode;
     char *codepend = bfcode;
     char fn[100];
@@ -51,8 +52,11 @@ int main()
     fflush(stdin);
 
     printf("input:\n");
-    scanf("%s", input);
+    fgets(input, 1000, stdin);
     fflush(stdin);
+    while(*inputend!=0){
+        inputend=inputend+1;
+    }
 
     fp = fopen(fn, "r");
     c = fgetc(fp);
@@ -92,6 +96,7 @@ int main()
     paramarr[TAPEPOS] = 0;
     paramarr[TAPENUM] = 0;
     paramarr[INPUTPOS] = 0;
+    paramarr[INPUTENDPOS] = inputend - input;
     paramarr[OUTPOS] = 0;
     paramarr[LINENUM] = 1;
     paramarr[LINESTARTNUM] = 0;
@@ -100,6 +105,10 @@ int main()
     while (!isbfcode(*codep))
     {
         codep = codep + 1;
+        if(*(codep-1)=='\n'){
+            paramarr[LINENUM]++;
+            paramarr[LINESTARTNUM]=codep-bfcode;
+        }
     }
     paramarr[CODEPOS] = codep - bfcode;
     if (codep == codepend)
@@ -348,6 +357,12 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
                 break;
 
             case ',':
+                if(param[INPUTPOS]==param[INPUTENDPOS]){
+                    fgets(input+param[INPUTENDPOS], 1000, stdin);
+                    while(input[param[INPUTENDPOS]]!=0){
+                        param[INPUTENDPOS]++;
+                    }
+                }
                 tape[param[TAPEPOS]] = input[param[INPUTPOS]];
                 param[INPUTPOS]++;
                 break;
