@@ -1,3 +1,8 @@
+// TODO: check code for mistakes and warn user before executing(loops next together, +- next to each other etc)
+// TODO: ask to ignore warning when warnings exist
+// TODO: add features(go backward, scroll tape or code, pointer for code, inject tape or input at any time, set checkpoints, step count, show total step count, auto, auto til condition, better drawcommand)
+// TODO: figure out good command format
+// TODO: fix stuff(line numbers when looping, i/o display with newlines, ending when skipping far ahead, draw after end)
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -23,6 +28,7 @@ enum
 };
 
 int isbfcode(char);
+void arrayimagemovementhandler(int *, int,  int *, int);
 void drawcode(int *, char *);
 void drawtape(int *, char *);
 void drawin(int *, char *);
@@ -190,6 +196,10 @@ void drawcode(int *param, char *code)
     }
 }
 
+void arrayimagemovementhandler(int *arrstart, int arrl, int *ppos, int move)
+{
+}
+
 void drawtape(int *param, char *tape)
 {
     int tapepos = param[TAPEPOS];
@@ -203,18 +213,18 @@ void drawtape(int *param, char *tape)
             printf("{");
         else if (i == tapepos + 1)
             printf("}");
-        else if (i == tapenum && tapenum != 0)
+        else if (i == 0)
             printf(" ");
         else
             printf("|");
 
         if (tape[i] > 99)
         {
-            printf("%d", tape[i]);
+            printf("%d", (unsigned char) tape[i]);
         }
         else
         {
-            printf(" %02d", tape[i]);
+            printf(" %02d", (unsigned char) tape[i]);
         }
     }
 
@@ -358,6 +368,7 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
 
             case ',':
                 if(param[INPUTPOS]==param[INPUTENDPOS]){
+                    printf("more input needed:");
                     fgets(input+param[INPUTENDPOS], 1000, stdin);
                     while(input[param[INPUTENDPOS]]!=0){
                         param[INPUTENDPOS]++;
