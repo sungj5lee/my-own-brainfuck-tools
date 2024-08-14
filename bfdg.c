@@ -134,6 +134,10 @@ int main()
         docommand(takecommand(), paramarr, bfcode, tape, input, output);
         // break;
     }
+    drawcode(paramarr, bfcode);
+    drawtape(paramarr, tape);
+    drawin(paramarr, input);
+    drawout(paramarr, output);
     printf("ENDING\n");
 
     return 0;
@@ -434,6 +438,9 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
                     param[LINESTARTNUM] = param[CODEPOS];
                 }
             } while (!isbfcode(code[param[CODEPOS]]));
+            if (param[MODE]==-1){
+                break;
+            }
         }
     }
 }
