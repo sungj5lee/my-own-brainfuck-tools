@@ -30,7 +30,7 @@ enum
 int isbfcode(char);
 void arrayimagemovementhandler(int *, int,  int *, int);
 void drawcode(int *, char *);
-void drawtape(int *, char *);
+void drawtape(int *,unsigned char *);
 void drawin(int *, char *);
 void drawout(int *, char *);
 void drawcommand();
@@ -40,7 +40,7 @@ void docommand(commandstruct, int *, char *, char *, char *, char *);
 int main()
 {
     FILE *fp;
-    char tape[20000];
+    unsigned char tape[20000]={0};
     char bfcode[20000];
     char input[1000] = {0};
     char output[1000] = {0};
@@ -200,7 +200,7 @@ void arrayimagemovementhandler(int *arrstart, int arrl, int *ppos, int move)
 {
 }
 
-void drawtape(int *param, char *tape)
+void drawtape(int *param, unsigned char *tape)
 {
     int tapepos = param[TAPEPOS];
     int tapenum = param[TAPENUM];
@@ -220,11 +220,11 @@ void drawtape(int *param, char *tape)
 
         if (tape[i] > 99)
         {
-            printf("%d", (unsigned char) tape[i]);
+            printf("%d", tape[i]);
         }
         else
         {
-            printf(" %02d", (unsigned char) tape[i]);
+            printf(" %02d", tape[i]);
         }
     }
 
