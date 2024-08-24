@@ -16,15 +16,15 @@ typedef struct commandstrt
 enum
 {
     MODE,
-    CODEPOS,
-    CODEENDPOS,
-    TAPEPOS,
-    TAPENUM,
-    INPUTPOS,
-    INPUTENDPOS,
-    OUTPOS,
-    LINENUM,
-    LINESTARTNUM
+    CODE_POINTER_IDX,
+    CODE_END_IDX,
+    TAPE_POINTER_IDX,
+    TAPE_START_IDX,
+    INPUT_POINTER_IDX,
+    INPUT_END_IDX,
+    OUT_POINTER_IDX,
+    CURR_LINE_NUM,
+    CURR_LINE_START_IDX
 };
 
 int isbfcode(char);
@@ -70,7 +70,7 @@ int main()
     {
         if (c == '\n')
         {
-            paramarr[LINENUM]++;
+            paramarr[CURR_LINE_NUM]++;
         }
         // syntax error check
         if (c == '[')
@@ -79,7 +79,7 @@ int main()
             loopflag--;
         if (loopflag < 0)
         {
-            printf("syntax error at line %d, extra ']'", paramarr[LINENUM]);
+            printf("syntax error at line %d, extra ']'", paramarr[CURR_LINE_NUM]);
             fclose(fp);
             return 0;
         }
@@ -97,26 +97,26 @@ int main()
     }
 
     paramarr[MODE] = 0;
-    paramarr[CODEPOS] = 0;
-    paramarr[CODEENDPOS] = codepend - bfcode;
-    paramarr[TAPEPOS] = 0;
-    paramarr[TAPENUM] = 0;
-    paramarr[INPUTPOS] = 0;
-    paramarr[INPUTENDPOS] = inputend - input;
-    paramarr[OUTPOS] = 0;
-    paramarr[LINENUM] = 1;
-    paramarr[LINESTARTNUM] = 0;
+    paramarr[CODE_POINTER_IDX] = 0;
+    paramarr[CODE_END_IDX] = codepend - bfcode;
+    paramarr[TAPE_POINTER_IDX] = 0;
+    paramarr[TAPE_START_IDX] = 0;
+    paramarr[INPUT_POINTER_IDX] = 0;
+    paramarr[INPUT_END_IDX] = inputend - input;
+    paramarr[OUT_POINTER_IDX] = 0;
+    paramarr[CURR_LINE_NUM] = 1;
+    paramarr[CURR_LINE_START_IDX] = 0;
 
     codep = bfcode;
     while (!isbfcode(*codep))
     {
         codep = codep + 1;
         if(*(codep-1)=='\n'){
-            paramarr[LINENUM]++;
-            paramarr[LINESTARTNUM]=codep-bfcode;
+            paramarr[CURR_LINE_NUM]++;
+            paramarr[CURR_LINE_START_IDX]=codep-bfcode;
         }
     }
-    paramarr[CODEPOS] = codep - bfcode;
+    paramarr[CODE_POINTER_IDX] = codep - bfcode;
     if (codep == codepend)
     {
         paramarr[MODE] = -1;
@@ -171,10 +171,10 @@ int isbfcode(char c)
 void drawcode(int *param, char *code)
 {
     int i;
-    int codepos = param[CODEPOS];
-    int codeendpos = param[CODEENDPOS];
-    int linenum = param[LINENUM];
-    int linestartnum = param[LINESTARTNUM];
+    int codepos = param[CODE_POINTER_IDX];
+    int codeendpos = param[CODE_END_IDX];
+    int linenum = param[CURR_LINE_NUM];
+    int linestartnum = param[CURR_LINE_START_IDX];
     char *p = code + linestartnum;
 
     for (i = 0; i < 3; i++)
@@ -206,8 +206,8 @@ void arrayimagemovementhandler(int *arrstart, int arrl, int *ppos, int move)
 
 void drawtape(int *param, unsigned char *tape)
 {
-    int tapepos = param[TAPEPOS];
-    int tapenum = param[TAPENUM];
+    int tapepos = param[TAPE_POINTER_IDX];
+    int tapenum = param[TAPE_START_IDX];
     int i;
 
     printf("TAPE\t");
@@ -252,7 +252,7 @@ void drawtape(int *param, unsigned char *tape)
 
 void drawin(int *param, char *input)
 {
-    int inputpos = param[INPUTPOS];
+    int inputpos = param[INPUT_POINTER_IDX];
     char *ip = input;
 
     printf("INPUT\t");
@@ -273,7 +273,7 @@ void drawin(int *param, char *input)
 
 void drawout(int *param, char *output)
 {
-    int outpos = param[OUTPOS];
+    int outpos = param[OUT_POINTER_IDX];
     char *op = output;
 
     printf("OUTPUT\t");
@@ -344,56 +344,56 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
         {
             loopstack=0;
 
-            switch (code[param[CODEPOS]])
+            switch (code[param[CODE_POINTER_IDX]])
             {
             case '+':
-                tape[param[TAPEPOS]]++;
+                tape[param[TAPE_POINTER_IDX]]++;
                 break;
 
             case '-':
-                tape[param[TAPEPOS]]--;
+                tape[param[TAPE_POINTER_IDX]]--;
                 break;
 
             case '<':
-                if (param[TAPEPOS] > 0)
+                if (param[TAPE_POINTER_IDX] > 0)
                 {
-                    param[TAPEPOS]--;
+                    param[TAPE_POINTER_IDX]--;
                 }
                 break;
 
             case '>':
-                param[TAPEPOS]++;
+                param[TAPE_POINTER_IDX]++;
                 break;
 
             case '.':
-                output[param[OUTPOS]] = tape[param[TAPEPOS]];
-                param[OUTPOS]++;
+                output[param[OUT_POINTER_IDX]] = tape[param[TAPE_POINTER_IDX]];
+                param[OUT_POINTER_IDX]++;
                 break;
 
             case ',':
-                if(param[INPUTPOS]==param[INPUTENDPOS]){
+                if(param[INPUT_POINTER_IDX]==param[INPUT_END_IDX]){
                     printf("more input needed:");
-                    fgets(input+param[INPUTENDPOS], 1000, stdin);
-                    while(input[param[INPUTENDPOS]]!=0){
-                        param[INPUTENDPOS]++;
+                    fgets(input+param[INPUT_END_IDX], 1000, stdin);
+                    while(input[param[INPUT_END_IDX]]!=0){
+                        param[INPUT_END_IDX]++;
                     }
                 }
-                tape[param[TAPEPOS]] = input[param[INPUTPOS]];
-                param[INPUTPOS]++;
+                tape[param[TAPE_POINTER_IDX]] = input[param[INPUT_POINTER_IDX]];
+                param[INPUT_POINTER_IDX]++;
                 break;
 
             case '[':
-                if (tape[param[TAPEPOS]] == 0)
+                if (tape[param[TAPE_POINTER_IDX]] == 0)
                 {
                     loopstack = 1;
                     while (loopstack != 0)
                     {
-                        param[CODEPOS]++;
-                        if (code[param[CODEPOS]] == '[')
+                        param[CODE_POINTER_IDX]++;
+                        if (code[param[CODE_POINTER_IDX]] == '[')
                         {
                             loopstack++;
                         }
-                        if (code[param[CODEPOS]] == ']')
+                        if (code[param[CODE_POINTER_IDX]] == ']')
                         {
                             loopstack--;
                         }
@@ -402,17 +402,17 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
                 break;
 
             case ']':
-                if (tape[param[TAPEPOS]] != 0)
+                if (tape[param[TAPE_POINTER_IDX]] != 0)
                 {
                     loopstack = -1;
                     while (loopstack != 0)
                     {
-                        param[CODEPOS]--;
-                        if (code[param[CODEPOS]] == '[')
+                        param[CODE_POINTER_IDX]--;
+                        if (code[param[CODE_POINTER_IDX]] == '[')
                         {
                             loopstack++;
                         }
-                        if (code[param[CODEPOS]] == ']')
+                        if (code[param[CODE_POINTER_IDX]] == ']')
                         {
                             loopstack--;
                         }
@@ -426,18 +426,18 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
 
             do
             {
-                param[CODEPOS]++;
-                if (param[CODEPOS] == param[CODEENDPOS])
+                param[CODE_POINTER_IDX]++;
+                if (param[CODE_POINTER_IDX] == param[CODE_END_IDX])
                 {
                     param[MODE] = -1;
                     break;
                 }
-                if (code[param[CODEPOS] - 1] == '\n')
+                if (code[param[CODE_POINTER_IDX] - 1] == '\n')
                 {
-                    param[LINENUM]++;
-                    param[LINESTARTNUM] = param[CODEPOS];
+                    param[CURR_LINE_NUM]++;
+                    param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
                 }
-            } while (!isbfcode(code[param[CODEPOS]]));
+            } while (!isbfcode(code[param[CODE_POINTER_IDX]]));
             if (param[MODE]==-1){
                 break;
             }
