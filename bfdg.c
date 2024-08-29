@@ -83,7 +83,7 @@ int main()
     {
         if (c == '\n')
         {
-            paramarr[CURR_LINE_NUM]++;
+            paramarr[LINENUM]++;
         }
         // syntax error check
         if (c == '[')
@@ -92,7 +92,7 @@ int main()
             loopflag--;
         if (loopflag < 0)
         {
-            printf("syntax error at line %d, extra ']'", paramarr[CURR_LINE_NUM]);
+            printf("syntax error at line %d, extra ']'", paramarr[LINENUM]);
             fclose(fp);
             return 0;
         }
@@ -127,11 +127,11 @@ int main()
     {
         codep = codep + 1;
         if(*(codep-1)=='\n'){
-            paramarr[CURR_LINE_NUM]++;
-            paramarr[CURR_LINE_START_IDX]=codep-bfcode;
+            paramarr[LINENUM]++;
+            paramarr[LINESTARTNUM]=codep-bfcode;
         }
     }
-    paramarr[CODE_POINTER_IDX] = codep - bfcode;
+    paramarr[CODEPOS] = codep - bfcode;
     if (codep == codepend)
     {
         paramarr[MODE] = EXIT;
@@ -186,10 +186,10 @@ int isbfcode(char c)
 void drawcode(int *param, char *code)
 {
     int i;
-    int codepos = param[CODE_POINTER_IDX];
-    int codeendpos = param[CODE_END_IDX];
-    int linenum = param[CURR_LINE_NUM];
-    int linestartnum = param[CURR_LINE_START_IDX];
+    int codepos = param[CODEPOS];
+    int codeendpos = param[CODEENDPOS];
+    int linenum = param[LINENUM];
+    int linestartnum = param[LINESTARTNUM];
     char *p = code + linestartnum;
 
     for (i = 0; i < 3; i++)
@@ -233,8 +233,8 @@ void arrayimagemovementhandler(int *arrstart, int arrl, int ppos, int move)
 
 void drawtape(int *param, unsigned char *tape)
 {
-    int tapepos = param[TAPE_POINTER_IDX];
-    int tapenum = param[TAPE_START_IDX];
+    int tapepos = param[TAPEPOS];
+    int tapenum = param[TAPENUM];
     int i;
 
     printf("TAPE\t");
@@ -279,7 +279,7 @@ void drawtape(int *param, unsigned char *tape)
 
 void drawin(int *param, char *input)
 {
-    int inputpos = param[INPUT_POINTER_IDX];
+    int inputpos = param[INPUTPOS];
     char *ip = input;
 
     printf("INPUT\t");
@@ -300,7 +300,7 @@ void drawin(int *param, char *input)
 
 void drawout(int *param, char *output)
 {
-    int outpos = param[OUT_POINTER_IDX];
+    int outpos = param[OUTPOS];
     char *op = output;
 
     printf("OUTPUT\t");
@@ -401,26 +401,6 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
         for (i = 0; i < command.steps; i++)
         {
             loopstack=0;
-
-            do
-            {
-                param[CODEPOS]--;
-                if (param[CODEPOS] == 0)
-                {
-                    //TODO:change to just stop
-                    param[MODE] = EXIT;
-                    break;
-                }
-                if (code[param[CODEPOS]] == '\n')
-                {
-                    param[LINENUM]--;
-                    param[LINESTARTNUM] = param[CODEPOS];
-                    while(code[param[LINESTARTNUM-1]!='\n']&&param[LINESTARTNUM]!=0)
-                    {
-                        param[LINESTARTNUM]--;
-                    }
-                }
-            } while (!isbfcode(code[param[CODEPOS]]));
 
             switch (code[param[CODEPOS]])
             {
@@ -656,10 +636,6 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
                 break;
             }
         }
-    }
-    
-    if(exitflag>0){
-        param[MODE]=-1;
     }
     
     if(exitflag>0){
