@@ -163,19 +163,12 @@ int isbfcode(char c)
     switch (c)
     {
     case '+':
-        return 1;
     case '-':
-        return 1;
     case '<':
-        return 1;
     case '>':
-        return 1;
     case ',':
-        return 1;
     case '.':
-        return 1;
     case '[':
-        return 1;
     case ']':
         return 1;
     default:
