@@ -213,14 +213,14 @@ void arrayimagemovementhandler(int *arrstart, int arrl, int ppos, int move)
     int buffer=1;
     ppos=ppos+move;
 
-    if(*ppos<0+buffer){
+    if(ppos<0+buffer){
         *arrstart=0;
     }
-    else if(*ppos<*arrstart+buffer){
-        *arrstart=*ppos-buffer;
+    else if(ppos<*arrstart+buffer){
+        *arrstart=ppos-buffer;
     }
-    else if(*ppos>*arrstart+arrl-buffer){
-        *arrstart=*ppos+buffer;
+    else if(ppos>*arrstart+arrl-buffer){
+        *arrstart=ppos+buffer;
     }
 }
 
@@ -269,7 +269,7 @@ void drawtape(int *param, unsigned char *tape)
     }
     printf("  ^\n");
 }
-
+//TODO: generalize special input cases and clean code
 void drawin(int *param, char *input)
 {
     int inputpos = param[INPUTPOS];
@@ -280,11 +280,27 @@ void drawin(int *param, char *input)
     {
         if (ip - input == inputpos)
         {
-            printf("{%c}", *ip);
+            if(*ip=='\n'&&*(ip+1)==0){
+                printf("{\\n}");
+            }
+            else if(*ip=='\n'&&*(ip+1)!=0){
+                printf("{\\n}\n");
+            }
+            else{
+                printf("{%c}", *ip);
+            }
         }
         else
         {
-            printf("%c", *ip);
+            if(*ip=='\n'&&*(ip+1)==0){
+                printf("\\n");
+            }
+            else if(*ip=='\n'&&*(ip+1)!=0){
+                printf("\\n\n");
+            }
+            else{
+                printf("%c", *ip);
+            }
         }
         ip = ip + 1;
     }
