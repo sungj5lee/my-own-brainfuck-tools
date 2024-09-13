@@ -7,6 +7,25 @@
 // ---> (+/-: move default/opposite)(numbers: steps)(letters: a:auto mode, c: draw char, n: draw num, e: edit mode)
 // ---> 100a: auto for 100 steps, -a: auto opposite way, -100a: auto opposite way for 100 steps, +/-: set movement to for/backwards
 // ---> spaces execute next command ex)-100 100a: move 100 steps back then auto back
+// ---> nothing: move 1 step
+// ---> number: amount of steps
+// ---> +/-: set movement to forwards or backwards
+// ---> command letters: valid letters that may take a number in front of them as an argument
+// ---> non command letters: invalid letters that are ignored. can be used to space out commands in one line
+// ---> parsing - command is divided by +/-, numbers, and each command letter.
+//                combining takes priority unless seperated by non command letters
+// ---> command letters -----
+//  a: auto moves one step at a time, takes number, no number autos until end or interupt by input, input will be taken as command unless its nothing(enter), enter will stop and not move one step
+//  #: set breakpoint at current position to stop at. next command to cross stops at breakpoint, can take number and special command letters for conditions, + or none: equal, -: not equal, >/<: larger/smaller, >=/<=: le/se, can add multiple breakpoints
+//  t: move tape pointer, takes number, isn't saved once moving
+//  T: does t and saves position
+//  c: move code pointer, takes number, isn't saved once moving
+//  C: does c and saves position
+//  e: edit current tape space, takes number, +/-: add/subtract, number with no sign: set to number, saved?
+//  E: does e and saves tape?
+//  z: undo previous command
+//  Z: redo next command
+//  i: move input pointer and add/change current input space, takes number, next char after is?
 #include <stdio.h>
 #include <stdlib.h>
 
