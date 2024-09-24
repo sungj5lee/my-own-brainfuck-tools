@@ -2,7 +2,7 @@
 // TODO: ask to ignore warning when warnings exist
 // TODO: find files easier
 // TODO: settings file?
-// TODO: add features(go backward, scroll tape or code, pointer for code, inject tape or input at any time, set checkpoints, step count, show total step count, auto, auto til condition, better drawcommand)
+// TODO: add features(go backward, scroll tape or code, pointer for code, inject tape or input at any time, set checkpoints, auto, auto til condition, better drawcommand)
 // TODO: figure out good command format
 // ---> (+/-: move default/opposite)(numbers: steps)(letters: a:auto mode, c: draw char, n: draw num, e: edit mode)
 // ---> 100a: auto for 100 steps, -a: auto opposite way, -100a: auto opposite way for 100 steps, +/-: set movement to for/backwards
@@ -160,6 +160,7 @@ int main()
     while (paramarr[MODE] != EXIT)
     {
         // draw
+        printf("%s\n",fn);
         drawcode(paramarr, bfcode);
         drawtape(paramarr, tape);
         drawin(paramarr, input);
@@ -169,6 +170,7 @@ int main()
         docommand(takecommand(), paramarr, bfcode, tape, input, output);
         // break;
     }
+    printf("%s\n",fn);
     drawcode(paramarr, bfcode);
     drawtape(paramarr, tape);
     drawin(paramarr, input);
@@ -203,9 +205,10 @@ void drawcode(int *param, char *code)
     int codeendpos = param[CODE_END_IDX];
     int linenum = param[CURR_LINE_NUM];
     int linestartnum = param[CURR_LINE_START_IDX];
+    int codewindowlen=5;
     char *p = code + linestartnum;
 
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < codewindowlen; i++)
     {
         if (p - code < codeendpos && i == 0)
         {
@@ -292,12 +295,12 @@ void drawtape(int *param, unsigned char *tape)
     }
     printf("\n");
 
-    printf("@%d\t", tapepos);
+    printf("    \t");
     for (i = 0; i < tapepos - tapenum; i++)
     {
         printf("    ");
     }
-    printf("  %c\n", tp_ch);
+    printf("  %c @%d\n", tp_ch, tapepos);
 }
 //TODO: generalize special input cases and clean code
 void drawin(int *param, char *input)
