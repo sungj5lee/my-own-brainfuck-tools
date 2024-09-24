@@ -50,7 +50,9 @@ enum
     CURR_LINE_START_IDX,
     //for backwards executing
     INPUT_OVERRIDE_POINTER_IDX,
-    LOOP_CYCLE_POINTER_IDX
+    LOOP_CYCLE_POINTER_IDX,
+    //for stats
+    STEP_COUNT,
 };
 
 enum
@@ -59,7 +61,7 @@ enum
     STOP,
     FORWARD,
     BACKWARD,
-    AUTO
+    AUTO,
 };
 
 int isbfcode(char);
@@ -68,7 +70,7 @@ void drawcode(int *, char *);
 void drawtape(int *,unsigned char *);
 void drawin(int *, char *);
 void drawout(int *, char *);
-void drawcommand();
+void drawcommand(int *);
 commandstruct takecommand();
 void docommand(commandstruct, int *, char *, char *, char *, char *);
 
@@ -86,7 +88,7 @@ int main()
     char *codepend = bfcode;
     char fn[100];
     char c;
-    int paramarr[9];
+    int paramarr[9]={0};
     int loopflag = 0;
     int i, j;
 
@@ -134,17 +136,9 @@ int main()
     }
 
     paramarr[MODE] = FORWARD;
-    paramarr[CODE_POINTER_IDX] = 0;
     paramarr[CODE_END_IDX] = codepend - bfcode;
-    paramarr[TAPE_POINTER_IDX] = 0;
-    paramarr[TAPE_START_IDX] = 0;
-    paramarr[INPUT_POINTER_IDX] = 0;
     paramarr[INPUT_END_IDX] = inputend - input;
-    paramarr[OUTPUT_POINTER_IDX] = 0;
     paramarr[CURR_LINE_NUM] = 1;
-    paramarr[CURR_LINE_START_IDX] = 0;
-    paramarr[INPUT_OVERRIDE_POINTER_IDX] = 0;
-    paramarr[LOOP_CYCLE_POINTER_IDX] = 0;
 
     codep = bfcode;
     while (!isbfcode(*codep))
@@ -168,7 +162,7 @@ int main()
         drawtape(paramarr, tape);
         drawin(paramarr, input);
         drawout(paramarr, output);
-        drawcommand();
+        drawcommand(paramarr);
         // //continue, forward, backward, exit, run, change tape data format, change tape, handle lack of input
         docommand(takecommand(), paramarr, bfcode, tape, input, output);
         // break;
