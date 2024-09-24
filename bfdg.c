@@ -53,6 +53,8 @@ enum
     LOOP_CYCLE_POINTER_IDX,
     //for stats
     STEP_COUNT,
+    //always at end
+    PARAM_SIZE,
 };
 
 enum
@@ -88,7 +90,7 @@ int main()
     char *codepend = bfcode;
     char fn[100];
     char c;
-    int paramarr[9]={0};
+    int paramarr[PARAM_SIZE]={0};
     int loopflag = 0;
     int i, j;
 
@@ -171,7 +173,7 @@ int main()
     drawtape(paramarr, tape);
     drawin(paramarr, input);
     drawout(paramarr, output);
-    printf("ENDING\n");
+    drawcommand(paramarr);
 
     return 0;
 }
@@ -351,9 +353,14 @@ void drawout(int *param, char *output)
     printf("\n");
 }
 
-void drawcommand()
+void drawcommand(int *param)
 {
-    printf("command: ");
+    if(param[MODE]==EXIT){
+        printf("(step %d)Ending: ", param[STEP_COUNT]);
+    }
+    else{
+        printf("(step %d)command: ", param[STEP_COUNT]);
+    }
 }
 
 commandstruct takecommand()
@@ -542,6 +549,7 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
                     param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
                 }
             } while (!isbfcode(code[param[CODE_POINTER_IDX]]));
+            param[STEP_COUNT]++;
             if (param[MODE]==EXIT)
             {
                 break;
