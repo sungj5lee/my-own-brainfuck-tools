@@ -67,7 +67,7 @@ enum
 };
 
 int isbfcode(char);
-void arrayimagemovementhandler(int *, int, int, int);
+void arrayimagemovementhandler(int *, int, int);
 void drawcode(int *, char *);
 void drawtape(int *,unsigned char *);
 void drawin(int *, char *);
@@ -228,10 +228,9 @@ void drawcode(int *param, char *code)
     }
 }
 
-void arrayimagemovementhandler(int *arrstart, int arrl, int ppos, int move)
+void arrayimagemovementhandler(int *arrstart, int arrl, int ppos)
 {
     int buffer=1;
-    ppos=ppos+move;
 
     if(ppos<0+buffer){
         *arrstart=0;
@@ -239,13 +238,16 @@ void arrayimagemovementhandler(int *arrstart, int arrl, int ppos, int move)
     else if(ppos<*arrstart+buffer){
         *arrstart=ppos-buffer;
     }
-    else if(ppos>*arrstart+arrl-buffer){
-        *arrstart=ppos+buffer;
+    else if(ppos>*arrstart+(arrl-1)-buffer){
+        *arrstart=ppos+buffer-(arrl-1);
     }
 }
 
 void drawtape(int *param, unsigned char *tape)
 {
+    int tapelen=30;
+    arrayimagemovementhandler(&param[TAPE_START_IDX], tapelen, param[TAPE_POINTER_IDX]);
+
     int tapepos = param[TAPE_POINTER_IDX];
     int tapenum = param[TAPE_START_IDX];
     int i;
@@ -254,9 +256,10 @@ void drawtape(int *param, unsigned char *tape)
     char hlR_ch='}';
     char tp_ch='^';
     char sepr_ch=' ';
+    char mark_ch='|';
 
     printf("TAPE\t");
-    for (i = tapenum; i < 30 + tapenum; i++)
+    for (i = tapenum; i < tapelen + tapenum; i++)
     {
         if (i == tapepos)
             printf("%c", hlL_ch);
@@ -264,6 +267,8 @@ void drawtape(int *param, unsigned char *tape)
             printf("%c", hlR_ch);
         else if (i == 0)
             printf(" ");
+        else if (i%5==0)
+            printf("%c", mark_ch);
         else
             printf("%c", sepr_ch);
 
@@ -287,7 +292,7 @@ void drawtape(int *param, unsigned char *tape)
     }
     printf("\n");
 
-    printf("    \t");
+    printf("@%d\t", tapepos);
     for (i = 0; i < tapepos - tapenum; i++)
     {
         printf("    ");
