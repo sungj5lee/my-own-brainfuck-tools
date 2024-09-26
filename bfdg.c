@@ -2,6 +2,7 @@
 // TODO: ask to ignore warning when warnings exist
 // TODO: find files easier
 // TODO: settings file?
+// TODO: define tape features
 // TODO: add features(go backward, scroll tape or code, pointer for code, inject tape or input at any time, set checkpoints, auto, auto til condition, better drawcommand)
 // TODO: figure out good command format
 // ---> (+/-: move default/opposite)(numbers: steps)(letters: a:auto mode, c: draw char, n: draw num, e: edit mode)
@@ -15,19 +16,23 @@
 // ---> parsing - command is divided by +/-, numbers, and each command letter.
 //                combining takes priority unless seperated by non command letters
 // ---> command letters -----
-//  a: auto moves one step at a time, takes number, no number autos until end or interupt by input, input will be taken as command unless its nothing(enter), enter will stop and not move one step
-//  #: set breakpoint at current position to stop at. next command to cross stops at breakpoint, can take number and special command letters for conditions, + or none: equal, -: not equal, >/<: larger/smaller, >=/<=: le/se, can add multiple breakpoints
-//  t: move tape pointer, takes number, isn't saved once moving
-//  T: does t and saves position
-//  c: move code pointer, takes number, isn't saved once moving
-//  C: does c and saves position
-//  e: edit current tape space, takes number, +/-: add/subtract, number with no sign: set to number, saved?
-//  E: does e and saves tape?
+//  #: set breakpoint at current position to stop at. next command to cross stops at breakpoint, when used at execution, stops when tape pointer is at value matching condition, for tape, execution, can take number and special command letters for conditions, + or none: equal, -: not equal, >/<: larger/smaller, >=/<=: le/se, can add multiple breakpoints, no option can erase existing breakpoints
+//  a: auto moves one step at a time, takes number, no number autos until end or interupt by input, when interupted, will stop and not move a step
+//  m: move to a certain step, takes number, resets to start if no number, starts from end if negative
+//  t: move focus to tape, takes some numbers, 1 will only move to non null spaces, other is default
+//  c: move focus to code, takes some numbers, 1 will move by lines, 2 will only move to brainfuck chars, other is default
+//  i: move focus to input
+//  p: sets pointer, takes number, set reletive to where you are, if not used, pointer will jump back to where it was once execution starts
+//  e: edits where you are, you will be able to use quotation marks to add strings infront of the pointer, single quotes to overwrite, double quotes to insert, use \b to pop space you are on, other common escape chars work too, for tape, can take number, no sign sets to number, +/- adds/subtracts
+//  q: exit, leaves above modes to normal execution mode, ends on execution mode
 //  z: undo previous command
 //  Z: redo next command
-//  i: move input pointer and add/change current input space, takes number, next char after is?
+//  s: change settings, only takes format of {setting_name:value,}, writing default as value sets to default, just {default} defaults all, no {} sends to setting page
+//  v: change tape visual, takes some numbers, no number cycles through options, 1 will show in base 16, 2 will show in chars, other is default
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct commandstrt
 {
@@ -36,9 +41,24 @@ typedef struct commandstrt
     char other[10];
 } commandstruct;
 
-enum
+typedef struct breakpointstrt
+{
+    int idx;
+    char condtion;
+    int condition_value;
+    breakpointstrt *next;
+} breakpointstrt;
+
+typedef struct settingstrt
+{
+    /* data */
+} settingstrt;
+
+enum param
 {
     MODE,
+    DIRECTION,
+    FIELD,
     CODE_POINTER_IDX,
     CODE_END_IDX,
     TAPE_POINTER_IDX,
@@ -57,13 +77,30 @@ enum
     PARAM_SIZE,
 };
 
-enum
+enum direction
 {
-    EXIT =-1,
     STOP,
     FORWARD,
     BACKWARD,
+}
+
+enum command
+{
+    EXIT =-1,
     AUTO,
+    EDIT,
+    SETTINGS,
+    VISUAL,
+};
+
+enum field
+{
+    EXECUTE,
+    TAPE,
+    CODE,
+    INPUT,
+    //always at end
+    FIELD_SIZE,
 };
 
 int isbfcode(char);
@@ -85,6 +122,8 @@ int main()
     char output[1000] = {0};
     unsigned char inputoverride[1000]={0};
     int loopcyclerecord[10000]={0};
+    char cmdhistory[10000];
+    breakpointstrt *breakpointarr[FIELD_SIZE];
     char *inputend = input;
     char *codep = bfcode;
     char *codepend = bfcode;
@@ -337,6 +376,9 @@ void drawin(int *param, char *input)
         }
         ip = ip + 1;
     }
+    if(inputpos==param[INPUT_END_IDX]){
+        printf("{}");
+    }
     printf("\n");
 }
 
@@ -363,12 +405,63 @@ void drawout(int *param, char *output)
 
 void drawcommand(int *param)
 {
-    if(param[MODE]==EXIT){
-        printf("(step %d)Ending: ", param[STEP_COUNT]);
+    char step_format[]="(step %d)";
+    char direction_format[]="(%c%c)";
+    char comment_format[]="command: ";
+    char direction_char='+';
+    char field_char='X';
+    char *command_str=(char *)malloc(sizeof(char)*100);
+
+    switch (param[DIRECTION])
+    {
+    case FORWARD:
+        direction_char='+';
+        break;
+    case BACKWARD:
+        direction_char='-';
+        break;
+    default:
+        break;
     }
-    else{
-        printf("(step %d)command: ", param[STEP_COUNT]);
+
+    switch (param[MODE])
+    {
+    case EXIT:
+        if(param[FIELD]==EXECUTE){
+            comment_format="Exiting: "
+        }
+        break;
+    case AUTO:
+        comment_format="Auto-moving...(Press any key to stop)"
+        break;
+    case EDIT:
+        comment_format="Input :";
+        break;
+    default:
+        break;
     }
+
+    switch (param[FIELD])
+    {
+    case EXECUTE:
+        field_char='X';
+        break;
+    case TAPE:
+        field_char='T';
+        break;
+    case CODE:
+        field_char='C';
+        break;
+    case INPUT:
+        field_char='I';
+        break;
+    default:
+        break;
+    }
+
+    printf(step_format, param[STEP_COUNT]);
+    printf(direction_format, direction_char, field_char);
+    printf(comment_format);
 }
 
 commandstruct takecommand()
