@@ -16,7 +16,7 @@
 // ---> parsing - command is divided by +/-, numbers, and each command letter.
 //                combining takes priority unless seperated by non command letters
 // ---> command letters -----
-//  #: set breakpoint at current position to stop at. next command to cross stops at breakpoint, when used at execution, stops when tape pointer is at value matching condition, for tape, execution, can take number and special command letters for conditions, + or none: equal, -: not equal, >/<: larger/smaller, >=/<=: le/se, can add multiple breakpoints, no option can erase existing breakpoints
+//  #: set breakpoint at current position to stop at. next command to cross stops at breakpoint, when used at execution, stops when tape pointer is at value matching condition, for tape, execution, can take positive number and special command letters for conditions, =/!: (is/not) equal, >/<: larger/smaller, just numbers is equal, can add multiple breakpoints, for multiple conditions, will first do AND, then OR, no option can erase existing breakpoints
 //  a: auto moves one step at a time, takes number, no number autos until end or interupt by input, when interupted, will stop and not move a step
 //  m: move to a certain step, takes number, resets to start if no number, starts from end if negative
 //  t: move focus to tape, takes some numbers, 1 will only move to non null spaces, other is default
@@ -36,17 +36,19 @@
 
 typedef struct commandstrt
 {
-    int steps;
-    int direction;
-    char other[10];
-} commandstruct;
+    int sign;
+    int num_value;
+    char str_value[100];
+    char cmd;
+    char field;
+} commandstrt;
 
 typedef struct breakpointstrt
 {
     int idx;
     char condtion;
     int condition_value;
-    breakpointstrt *next;
+    struct breakpointstrt *next;
 } breakpointstrt;
 
 typedef struct settingstrt
@@ -68,6 +70,7 @@ enum param
     OUTPUT_POINTER_IDX,
     CURR_LINE_NUM,
     CURR_LINE_START_IDX,
+    COMMAND_POINTER_IDX,
     //for backwards executing
     INPUT_OVERRIDE_POINTER_IDX,
     LOOP_CYCLE_POINTER_IDX,
@@ -82,12 +85,14 @@ enum direction
     STOP,
     FORWARD,
     BACKWARD,
-}
+};
 
 enum command
 {
-    EXIT =-1,
+    EXIT,
+    DEFAULT_MOVEMENT,
     AUTO,
+    BREAKPOINT,
     EDIT,
     SETTINGS,
     VISUAL,
@@ -110,8 +115,8 @@ void drawtape(int *,unsigned char *);
 void drawin(int *, char *);
 void drawout(int *, char *);
 void drawcommand(int *);
-commandstruct takecommand();
-void docommand(commandstruct, int *, char *, char *, char *, char *);
+void takecommand(int *, commandstrt *);
+void docommand(commandstrt *, int *, char *, char *, char *, char *);
 
 int main()
 {
@@ -122,7 +127,7 @@ int main()
     char output[1000] = {0};
     unsigned char inputoverride[1000]={0};
     int loopcyclerecord[10000]={0};
-    char cmdhistory[10000];
+    commandstrt cmdhistory[10000];
     breakpointstrt *breakpointarr[FIELD_SIZE];
     char *inputend = input;
     char *codep = bfcode;
@@ -176,7 +181,9 @@ int main()
         return 0;
     }
 
-    paramarr[MODE] = FORWARD;
+    paramarr[MODE] = DEFAULT_MOVEMENT;
+    paramarr[DIRECTION] = FORWARD;
+    paramarr[FIELD] = EXECUTE;
     paramarr[CODE_END_IDX] = codepend - bfcode;
     paramarr[INPUT_END_IDX] = inputend - input;
     paramarr[CURR_LINE_NUM] = 1;
@@ -206,7 +213,8 @@ int main()
         drawout(paramarr, output);
         drawcommand(paramarr);
         // //continue, forward, backward, exit, run, change tape data format, change tape, handle lack of input
-        docommand(takecommand(), paramarr, bfcode, tape, input, output);
+        takecommand(paramarr, cmdhistory);
+        docommand(cmdhistory, paramarr, bfcode, tape, input, output);
         // break;
     }
     printf("%s\n",fn);
@@ -405,9 +413,9 @@ void drawout(int *param, char *output)
 
 void drawcommand(int *param)
 {
-    char step_format[]="(step %d)";
-    char direction_format[]="(%c%c)";
-    char comment_format[]="command: ";
+    char *step_format="(step %d)";
+    char *direction_format="(%c%c)";
+    char *comment_format="command: ";
     char direction_char='+';
     char field_char='X';
     char *command_str=(char *)malloc(sizeof(char)*100);
@@ -428,11 +436,11 @@ void drawcommand(int *param)
     {
     case EXIT:
         if(param[FIELD]==EXECUTE){
-            comment_format="Exiting: "
+            comment_format="Exiting: ";
         }
         break;
     case AUTO:
-        comment_format="Auto-moving...(Press any key to stop)"
+        comment_format="Auto-moving...(Press any key to stop)";
         break;
     case EDIT:
         comment_format="Input :";
@@ -464,81 +472,122 @@ void drawcommand(int *param)
     printf(comment_format);
 }
 
-commandstruct takecommand()
+void takecommand(int *param, commandstrt *cmdarr)
 {
-    //current command: {number}{f|b|a|e}
+    int i;
     char c;
-    char commandstr[100];
-    char *commandp=commandstr;
-    commandstruct command = {1, 1, "\n"};
+    char commandstr[1000];
+    char *commandheadp=commandstr;
+    char *commandstartp=commandstr;
+    char *commandendp=commandstr;
+    char *numstart;
+    char *numend;
+    commandstrt* command=&cmdarr[param[COMMAND_POINTER_IDX]];
     int scancheck;
+    char cmd_letters[]="#amtcipeqzZsv";
+    char start_letters[]="\'\"({";
+    char end_letters[]="\'\")}";
+    char condition_letters=[]="=!<>";
+    char number_letters[]="+-0123456789";
+    
+    fgets(commandstr, 1000, stdin);
+    strpbrk(commandendp, start_letters);
+    while(commandendp!=NULL){
+        strpbrk(commandstartp, cmd_letters);
+        while(commandstartp<commandendp || commandstartp!=NULL){
+            *commandstartp=NULL;
+            numstart=strpbrk(commandheadp, number_letters);
+            numend=numstart;
+            while(numstart<commandstartp && numstart!=NULL){
+                while(numend<commandstartp && strchr("0123456789", *numend)){
+                    numend++;
+                }
+                if(numend==commandstartp){
+                    break;
+                }
+                
+                command=(commandstrt *)malloc(sizeof(commandstrt *));
+                if((*numstart=='+' || *numstart=='-') && (numstart+1==numend)){
+                    command
+                }
 
-    c=getc(stdin);
-    if(c=='-'||c=='+'){
-        *commandp=c;
-        commandp=commandp+1;
-        c=getc(stdin);
-    }
-    while('0'<=c&&c<='9'){
-        *commandp=c;
-        commandp=commandp+1;
-        c=getc(stdin);
-    }
-    commandp=command.other;
-    while(1){
-        *commandp=c;
-        commandp=commandp+1;
-        if(c=='\n'){
-            *commandp=0;
-            break;
+                numstart=numend;
+            }
+            command=(commandstrt *)malloc(sizeof(commandstrt *));
+            switch(*commandstartp){}
+            if(numend==commandstartp){}
+            command++;
+            
+            commandstartp++;
+            numstart=numend=commandheadp=commandstartp;
+            strpbrk(commandstartp, cmd_letters);
         }
-        c=getc(stdin);
+        commandstartp=commandendp;
+        commandendp=strchr(commandstartp, end_letters[strchr(start_letters, *commandstartp)-start_letters]);
+        while(commandendp!=NULL && commandheadp<commandendp){
+            switch(*commandstartp){
+                case '\'':
+                    break;
+                case '\"':
+                    break;
+                case '{':
+                    break;
+                default:
+                    break;
+            }
+
+        }
+        commandendp=commandheadp;
+        commandstartp=commandheadp;
+
+        strpbrk(commandendp, start_letters);
     }
-    scancheck=sscanf(commandstr, "%d", &command.steps);
-    fflush(stdin);
+    
     if(scancheck==0){
-        command.steps=1;
+        command.num_value=1;
     }
-    if(command.steps<0){
-        command.direction=-1;
-        command.steps=command.steps*-1;
+    if(command.num_value<0){
+        command.sign=-1;
+        command.num_value=command.num_value*-1;
     }
 
     return command;
 }
 
-void docommand(commandstruct command, int *param, char *code, char *tape, char *input, char *output)
+void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *input, char *output)
 {
-    //MODE -1 exit, 0 stop, 1 forward, 2 backward, 3 auto 
     int loopstack = 0;
+    enum direction command_direction;
     int i;
     int exitflag=0;
     char *chp;
 
-    chp=command.other;
+    chp=command.str_value;
     while(*chp!=0){
-        if(*chp=='f'||*chp=='F'){
-            param[MODE]=FORWARD;
-            break;
-        }
-        if(*chp=='b'||*chp=='B'){
-            param[MODE]=BACKWARD;
-            break;
-        }
         if(*chp=='a'||*chp=='A'){
             param[MODE]=AUTO;
             break;
         }
-        if(*chp=='e'||*chp=='E'||*chp=='q'||*chp=='Q'){
+        if(*chp=='q'||*chp=='Q'){
             exitflag=1;
             break;
         }
         chp=chp+1;
     }
 
-    if ((param[MODE]==FORWARD&&command.direction>0)||(param[MODE]==BACKWARD&&command.direction<0)||(param[MODE]==AUTO&&command.direction>0))
+    if((param[DIRECTION]==FORWARD && command.sign>0) || (param[DIRECTION]==BACKWARD && command.sign<0)){
+        command_direction=FORWARD;
+    }
+    else if((param[DIRECTION]==BACKWARD && command.sign>0) || (param[DIRECTION]==FORWARD && command.sign<0)){
+        command_direction=BACKWARD;
+    }
+    else{
+        command_direction=STOP;
+    }
+
+    if (command_direction==FORWARD)
     {
-        for (i = 0; i < command.steps; i++)
+        for (i = 0; i < command.num_value; i++)
         {
             loopstack=0;
 
@@ -657,9 +706,9 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
             }
         }
     }
-    if ((param[MODE]==FORWARD&&command.direction<0)||(param[MODE]==BACKWARD&&command.direction>0)||(param[MODE]==AUTO&&command.direction<0))
+    if (command_direction==BACKWARD)
     {
-        for (i = 0; i < command.steps; i++)
+        for (i = 0; i < command.num_value; i++)
         {
             loopstack=0;
 
@@ -780,6 +829,6 @@ void docommand(commandstruct command, int *param, char *code, char *tape, char *
     }
     
     if(exitflag>0){
-        param[MODE]=-1;
+        param[MODE]=EXIT;
     }
 }
