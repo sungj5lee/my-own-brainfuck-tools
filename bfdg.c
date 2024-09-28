@@ -98,7 +98,7 @@ enum command
     VISUAL,
 };
 
-enum field
+typedef enum field
 {
     EXECUTE,
     TAPE,
@@ -106,7 +106,7 @@ enum field
     INPUT,
     //always at end
     FIELD_SIZE,
-};
+} field_enum;
 
 int isbfcode(char);
 void arrayimagemovementhandler(int *, int, int);
@@ -137,7 +137,7 @@ int main()
     int paramarr[PARAM_SIZE]={0};
     int loopflag = 0;
     int i, j;
-
+    
     printf("file name:\n");
     scanf("%s", fn);
     fflush(stdin);
@@ -487,62 +487,31 @@ void takecommand(int *param, commandstrt *cmdarr)
     char cmd_letters[]="#amtcipeqzZsv";
     char start_letters[]="\'\"({";
     char end_letters[]="\'\")}";
-    char condition_letters=[]="=!<>";
+    char condition_letters[]="=!<>";
     char number_letters[]="+-0123456789";
-    
+    int bracket_moveflag=1;
+    int cond_moveflag=1;
+    int num_moveflag=1;
+
     fgets(commandstr, 1000, stdin);
     strpbrk(commandendp, start_letters);
-    while(commandendp!=NULL){
-        strpbrk(commandstartp, cmd_letters);
-        while(commandstartp<commandendp || commandstartp!=NULL){
-            *commandstartp=NULL;
-            numstart=strpbrk(commandheadp, number_letters);
-            numend=numstart;
-            while(numstart<commandstartp && numstart!=NULL){
-                while(numend<commandstartp && strchr("0123456789", *numend)){
-                    numend++;
-                }
-                if(numend==commandstartp){
-                    break;
-                }
-                
-                command=(commandstrt *)malloc(sizeof(commandstrt *));
-                if((*numstart=='+' || *numstart=='-') && (numstart+1==numend)){
-                    command
-                }
-
-                numstart=numend;
-            }
-            command=(commandstrt *)malloc(sizeof(commandstrt *));
-            switch(*commandstartp){}
-            if(numend==commandstartp){}
-            command++;
-            
-            commandstartp++;
-            numstart=numend=commandheadp=commandstartp;
-            strpbrk(commandstartp, cmd_letters);
-        }
-        commandstartp=commandendp;
-        commandendp=strchr(commandstartp, end_letters[strchr(start_letters, *commandstartp)-start_letters]);
-        while(commandendp!=NULL && commandheadp<commandendp){
-            switch(*commandstartp){
-                case '\'':
-                    break;
-                case '\"':
-                    break;
-                case '{':
-                    break;
-                default:
-                    break;
-            }
+    while (1)
+    {
+        if(bracket_moveflag){
 
         }
-        commandendp=commandheadp;
-        commandstartp=commandheadp;
+        
+        if(cond_moveflag){
 
-        strpbrk(commandendp, start_letters);
+        }
+
+        if(num_moveflag){
+
+        }
+
     }
     
+
     if(scancheck==0){
         command.num_value=1;
     }
