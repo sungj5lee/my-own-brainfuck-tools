@@ -33,14 +33,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <windows.h>
 
 typedef struct commandstrt
 {
     int sign;
+    int field;
     int num_value;
     char str_value[100];
     char cmd;
-    char field;
 } commandstrt;
 
 typedef struct breakpointstrt
@@ -110,6 +111,7 @@ typedef enum field
 
 int isbfcode(char);
 void arrayimagemovementhandler(int *, int, int);
+void makedefaultcommandstrt(commandstrt *, int *);
 void drawcode(int *, char *);
 void drawtape(int *,unsigned char *);
 void drawin(int *, char *);
@@ -477,11 +479,10 @@ void takecommand(int *param, commandstrt *cmdarr)
     int i;
     char c;
     char commandstr[1000];
-    char *commandheadp=commandstr;
-    char *commandstartp=commandstr;
-    char *commandendp=commandstr;
-    char *numstart;
-    char *numend;
+    char *bracketstartp=commandstr;
+    char *bracketendp=commandstr;
+    char *letterp=commandstr;
+    char *nump=commandstr;
     commandstrt* command=&cmdarr[param[COMMAND_POINTER_IDX]];
     int scancheck;
     char cmd_letters[]="#amtcipeqzZsv";
@@ -490,25 +491,125 @@ void takecommand(int *param, commandstrt *cmdarr)
     char condition_letters[]="=!<>";
     char number_letters[]="+-0123456789";
     int bracket_moveflag=1;
-    int cond_moveflag=1;
+    int letter_moveflag=1;
     int num_moveflag=1;
 
     fgets(commandstr, 1000, stdin);
-    strpbrk(commandendp, start_letters);
     while (1)
     {
         if(bracket_moveflag){
+            if(strchr(start_letters, *bracketstartp)){
+                makedefaultcommandstrt(command, param);
+                command->cmd=*bracketendp;
+                strncpy(command->str_value, bracketstartp, bracketendp-bracketstartp);
+                command++;
+                bracketendp++;
+                bracketstartp=bracketendp;
+            }
+            
+            bracketstartp=strpbrk(bracketstartp, start_letters);
+            while(bracketstartp!=NULL){
+                bracketendp=strchr(bracketstartp, end_letters[strchr(start_letters, *bracketstartp)-start_letters]);
+                if(bracketendp!=NULL){
+                    bracketendp++;
+                    if((*bracketstartp=='\'' || *bracketstartp=='\"') && *bracketendp=='e'){
+                        break;
+                    }
+                    if(*bracketstartp=='{' && *bracketendp=='s'){
+                        break;
+                    }
+                }
 
+                bracketstartp=strpbrk(bracketstartp, start_letters);
+            }
+            bracket_moveflag=0;
+            letter_moveflag=1;
+            num_moveflag=1;
         }
         
-        if(cond_moveflag){
+        if(letter_moveflag){
+            if(strchr(cmd_letters, *letterp) && !(bracketstartp<=letterp && letterp<=bracketendp)){
+                makedefaultcommandstrt(command, param);
+                command->cmd=*letterp;
+                if(*letterp=='#' and strchr(condition_letters, *(letterp-1))){
+                    command->str_value[0]=*(letterp-1);
+                    command->str_value[1]='\0';
+                }
+                command++;
+                letterp++;
+            }
 
+            letterp=strpbrk(letterp, cmd_letters);
+            while(bracketstartp<=letterp && letterp<=bracketendp){
+                bracket_moveflag=1;
+                letterp=strpbrk(letterp, cmd_letters);
+            }
+            letter_moveflag=0;
+            num_moveflag=1;
         }
 
         if(num_moveflag){
+            nump=strpbrk(nump, number_letters);
+            while(nump!=NULL){
+                if(nump>=letterp){
+                    letter_moveflag=1;
+                    break;
+                }
+                if(nump>=bracketstartp){
+                    while(bracketstartp<=nump && nump<=bracketendp){
+                        nump++;
+                        nump=strpbrk(nump, number_letters);
+                    }
+                    bracket_moveflag=1;
+                    break;
+                }
+                makedefaultcommandstrt(command, param);
+                if((*nump=='+' || *nump=='-') && !isdigit(*(nump+1))){
+                    command->sign=*nump=='+'?FORWARD:BACKWARD;
+                }
+                if((*nump=='+' || *nump=='-') && isdigit(*(nump+1)) || isdigit(*nump)){
+                    command->num_value=atoi(nump);
+                }
 
+                while(isdigit(*(nump+1))){
+                    nump++;
+                }
+                nump++;
+                if(strpbrk(nump, "#amtcpev")!=NULL && isdigit(*(nump-1))){
+                    command->cmd=*nump;
+                    num_moveflag=0;
+                    letter_moveflag=1;
+                    letterp++;
+                    break;
+                }
+                if(strpbrk(nump, condition_letters)!=NULL && isdigit(*(nump-1)) && *(nump+1)=='#'){
+                    command->cmd=*(nump+1);
+                    command->str_value[0]=*nump;
+                    command->str_value[1]='\0';
+                    num_moveflag=0;
+                    letter_moveflag=1;
+                    letterp++;
+                    break;
+                }
+
+                command++;
+                nump=strpbrk(nump, number_letters);
+            }
+
+            if(nump==NULL){
+                if(letterp<bracketstartp){
+                    letter_moveflag=1;
+                }
+                else{
+                    bracket_moveflag=1;
+                }
+                num_moveflag=0;
+            }
         }
-
+        
+        if(bracketstartp==NULL && letterp==NULL && nump==NULL){
+            break;
+        }
     }
     
 
@@ -544,10 +645,10 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
         chp=chp+1;
     }
 
-    if((param[DIRECTION]==FORWARD && command.sign>0) || (param[DIRECTION]==BACKWARD && command.sign<0)){
+    if((param[DIRECTION]==FORWARD && command->num_value>0) || (param[DIRECTION]==BACKWARD && command->num_value<0)){
         command_direction=FORWARD;
     }
-    else if((param[DIRECTION]==BACKWARD && command.sign>0) || (param[DIRECTION]==FORWARD && command.sign<0)){
+    else if((param[DIRECTION]==BACKWARD && command->num_value>0) || (param[DIRECTION]==FORWARD && command->num_value<0)){
         command_direction=BACKWARD;
     }
     else{
@@ -800,4 +901,13 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
     if(exitflag>0){
         param[MODE]=EXIT;
     }
+}
+
+void makedefaultcommandstrt(commandstrt *cmdp, int *param){
+    cmdp=(commandstrt *)malloc(sizeof(commandstrt));
+    cmdp->sign=param[DIRECTION];
+    cmdp->field=param[FIELD];
+    cmdp->cmd='';
+    cmdp->num_value=0;
+    strcpy(cmdp->str_value, "");
 }
