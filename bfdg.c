@@ -72,6 +72,7 @@ enum param
     CURR_LINE_NUM,
     CURR_LINE_START_IDX,
     COMMAND_POINTER_IDX,
+    COMMAND_END_IDX,
     //for backwards executing
     INPUT_OVERRIDE_POINTER_IDX,
     LOOP_CYCLE_POINTER_IDX,
@@ -104,7 +105,7 @@ typedef enum field
     EXECUTE,
     TAPE,
     CODE,
-    INPUT,
+    INPUT_LINE,
     //always at end
     FIELD_SIZE,
 } field_enum;
@@ -141,7 +142,7 @@ int main()
     int i, j;
     
     printf("file name:\n");
-    scanf("%s", fn);
+    gets(fn);
     fflush(stdin);
 
     printf("input:\n");
@@ -205,7 +206,7 @@ int main()
         paramarr[MODE] = EXIT;
     }
 
-    while (paramarr[MODE] != EXIT)
+    while (paramarr[MODE] != EXIT && paramarr[FIELD]==EXECUTE)
     {
         // draw
         printf("%s\n",fn);
@@ -462,7 +463,7 @@ void drawcommand(int *param)
     case CODE:
         field_char='C';
         break;
-    case INPUT:
+    case INPUT_LINE:
         field_char='I';
         break;
     default:
@@ -478,7 +479,7 @@ void takecommand(int *param, commandstrt *cmdarr)
 {
     int i;
     char c;
-    char commandstr[1000];
+    char commandstr[1000]={0};
     char *bracketstartp=commandstr;
     char *bracketendp=commandstr;
     char *letterp=commandstr;
@@ -497,12 +498,21 @@ void takecommand(int *param, commandstrt *cmdarr)
     fgets(commandstr, 1000, stdin);
     while (1)
     {
+        if(*commandstr=='\n'){
+            makedefaultcommandstrt(command,param);
+            command->num_value=1;
+            command++;
+            param[COMMAND_END_IDX]++;
+            break;
+        }
+
         if(bracket_moveflag){
             if(strchr(start_letters, *bracketstartp)){
                 makedefaultcommandstrt(command, param);
                 command->cmd=*bracketendp;
                 strncpy(command->str_value, bracketstartp, bracketendp-bracketstartp);
                 command++;
+                param[COMMAND_END_IDX]++;
                 bracketendp++;
                 bracketstartp=bracketendp;
             }
@@ -523,51 +533,60 @@ void takecommand(int *param, commandstrt *cmdarr)
                 bracketstartp=strpbrk(bracketstartp, start_letters);
             }
             bracket_moveflag=0;
-            letter_moveflag=1;
-            num_moveflag=1;
+            if(letterp!=NULL){
+                letter_moveflag=1;
+            }
+            if(nump!=NULL){
+                num_moveflag=1;
+            }
         }
         
         if(letter_moveflag){
             if(strchr(cmd_letters, *letterp) && !(bracketstartp<=letterp && letterp<=bracketendp)){
                 makedefaultcommandstrt(command, param);
                 command->cmd=*letterp;
-                if(*letterp=='#' and strchr(condition_letters, *(letterp-1))){
+                if(*letterp=='#' && strchr(condition_letters, *(letterp-1))){
                     command->str_value[0]=*(letterp-1);
                     command->str_value[1]='\0';
                 }
                 command++;
+                param[COMMAND_END_IDX]++;
                 letterp++;
             }
 
             letterp=strpbrk(letterp, cmd_letters);
-            while(bracketstartp<=letterp && letterp<=bracketendp){
+            while(bracketstartp<=letterp && letterp<=bracketendp && letterp!=NULL){
                 bracket_moveflag=1;
                 letterp=strpbrk(letterp, cmd_letters);
             }
             letter_moveflag=0;
-            num_moveflag=1;
+            if(nump!=NULL){
+                num_moveflag=1;
+            }
         }
 
         if(num_moveflag){
             nump=strpbrk(nump, number_letters);
             while(nump!=NULL){
-                if(nump>=letterp){
+                if(nump>letterp && letterp!=NULL){
                     letter_moveflag=1;
                     break;
                 }
-                if(nump>=bracketstartp){
-                    while(bracketstartp<=nump && nump<=bracketendp){
+                if(nump>bracketstartp && bracketstartp!=NULL){
+                    while(bracketstartp<nump && nump<bracketendp && nump!=NULL){
                         nump++;
                         nump=strpbrk(nump, number_letters);
                     }
-                    bracket_moveflag=1;
+                    if(bracketstartp!=NULL){
+                        bracket_moveflag=1;
+                    }
                     break;
                 }
                 makedefaultcommandstrt(command, param);
                 if((*nump=='+' || *nump=='-') && !isdigit(*(nump+1))){
-                    command->sign=*nump=='+'?FORWARD:BACKWARD;
+                    command->cmd=*nump;
                 }
-                if((*nump=='+' || *nump=='-') && isdigit(*(nump+1)) || isdigit(*nump)){
+                if(((*nump=='+' || *nump=='-') && isdigit(*(nump+1))) || isdigit(*nump)){
                     command->num_value=atoi(nump);
                 }
 
@@ -578,7 +597,9 @@ void takecommand(int *param, commandstrt *cmdarr)
                 if(strpbrk(nump, "#amtcpev")!=NULL && isdigit(*(nump-1))){
                     command->cmd=*nump;
                     num_moveflag=0;
-                    letter_moveflag=1;
+                    if(letterp!=NULL){
+                        letter_moveflag=1;
+                    }
                     letterp++;
                     break;
                 }
@@ -587,41 +608,34 @@ void takecommand(int *param, commandstrt *cmdarr)
                     command->str_value[0]=*nump;
                     command->str_value[1]='\0';
                     num_moveflag=0;
-                    letter_moveflag=1;
+                    if(letterp!=NULL){
+                        letter_moveflag=1;
+                    }
                     letterp++;
                     break;
                 }
 
+                param[COMMAND_END_IDX]++;
                 command++;
                 nump=strpbrk(nump, number_letters);
             }
 
             if(nump==NULL){
-                if(letterp<bracketstartp){
+                if(letterp<bracketstartp && letterp!=NULL){
                     letter_moveflag=1;
                 }
-                else{
+                else if(bracketstartp!=NULL){
                     bracket_moveflag=1;
                 }
-                num_moveflag=0;
             }
+            num_moveflag=0;
         }
         
         if(bracketstartp==NULL && letterp==NULL && nump==NULL){
             break;
         }
     }
-    
 
-    if(scancheck==0){
-        command.num_value=1;
-    }
-    if(command.num_value<0){
-        command.sign=-1;
-        command.num_value=command.num_value*-1;
-    }
-
-    return command;
 }
 
 void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *input, char *output)
@@ -629,285 +643,304 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
     int loopstack = 0;
     enum direction command_direction;
     int i;
-    int exitflag=0;
-    char *chp;
+    commandstrt* command;
+    char chp;
 
-    chp=command.str_value;
-    while(*chp!=0){
-        if(*chp=='a'||*chp=='A'){
+    while(param[COMMAND_POINTER_IDX]<param[COMMAND_END_IDX]){
+        command=cmdarr+param[COMMAND_POINTER_IDX];
+        (command+1)->field=command->field;
+        (command+1)->sign=command->sign;
+
+        switch (command->cmd)
+        {
+        case 'a':
             param[MODE]=AUTO;
             break;
-        }
-        if(*chp=='q'||*chp=='Q'){
-            exitflag=1;
+        case 'd':
+            param[MODE]=DEFAULT_MOVEMENT;
+            break;
+        case 'e':
+            param[MODE]=EDIT;
+            break;
+        case '#':
+            param[MODE]=BREAKPOINT;
+            break;
+        case 'v':
+            param[MODE]=VISUAL;
+            break;
+        case 's':
+            param[MODE]=SETTINGS;
+            break;
+        case 'q':
+            param[MODE]=EXIT;
+            break;
+        
+        default:
+            param[MODE]=DEFAULT_MOVEMENT;
             break;
         }
-        chp=chp+1;
-    }
 
-    if((param[DIRECTION]==FORWARD && command->num_value>0) || (param[DIRECTION]==BACKWARD && command->num_value<0)){
-        command_direction=FORWARD;
-    }
-    else if((param[DIRECTION]==BACKWARD && command->num_value>0) || (param[DIRECTION]==FORWARD && command->num_value<0)){
-        command_direction=BACKWARD;
-    }
-    else{
-        command_direction=STOP;
-    }
+        if((command->sign==FORWARD && command->num_value>0) || (command->sign==BACKWARD && command->num_value<0)){
+            command_direction=FORWARD;
+        }
+        else if((command->sign==BACKWARD && command->num_value>0) || (command->sign==FORWARD && command->num_value<0)){
+            command_direction=BACKWARD;
+        }
+        else{
+            command_direction=STOP;
+        }
 
-    if (command_direction==FORWARD)
-    {
-        for (i = 0; i < command.num_value; i++)
+        if (command_direction==FORWARD)
         {
-            loopstack=0;
-
-            switch (code[param[CODE_POINTER_IDX]])
+            for (i = 0; i < command->num_value; i++)
             {
-            case '+':
-                tape[param[TAPE_POINTER_IDX]]++;
-                break;
+                loopstack=0;
 
-            case '-':
-                tape[param[TAPE_POINTER_IDX]]--;
-                break;
-
-            case '<':
-                if (param[TAPE_POINTER_IDX] > 0)
+                switch (code[param[CODE_POINTER_IDX]])
                 {
-                    param[TAPE_POINTER_IDX]--;
-                }
-                break;
+                case '+':
+                    tape[param[TAPE_POINTER_IDX]]++;
+                    break;
 
-            case '>':
-                param[TAPE_POINTER_IDX]++;
-                break;
+                case '-':
+                    tape[param[TAPE_POINTER_IDX]]--;
+                    break;
 
-            case '.':
-                output[param[OUTPUT_POINTER_IDX]] = tape[param[TAPE_POINTER_IDX]];
-                param[OUTPUT_POINTER_IDX]++;
-                break;
-
-            case ',':
-                if(param[INPUT_POINTER_IDX]==param[INPUT_END_IDX]){
-                    printf("more input needed:");
-                    fgets(input+param[INPUT_END_IDX], 1000, stdin);
-                    while(input[param[INPUT_END_IDX]]!=0){
-                        param[INPUT_END_IDX]++;
-                    }
-                }
-                tape[param[TAPE_POINTER_IDX]] = input[param[INPUT_POINTER_IDX]];
-                param[INPUT_POINTER_IDX]++;
-                break;
-
-            case '[':
-                if (tape[param[TAPE_POINTER_IDX]] == 0)
-                {
-                    loopstack = 1;
-                    while (loopstack != 0)
+                case '<':
+                    if (param[TAPE_POINTER_IDX] > 0)
                     {
-                        param[CODE_POINTER_IDX]++;
-                        if (code[param[CODE_POINTER_IDX]] == '[')
-                        {
-                            loopstack++;
-                        }
-                        if (code[param[CODE_POINTER_IDX]] == ']')
-                        {
-                            loopstack--;
-                        }
-                        if (code[param[CODE_POINTER_IDX]-1] == '\n')
-                        {
-                            param[CURR_LINE_NUM]++;
-                            param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
+                        param[TAPE_POINTER_IDX]--;
+                    }
+                    break;
+
+                case '>':
+                    param[TAPE_POINTER_IDX]++;
+                    break;
+
+                case '.':
+                    output[param[OUTPUT_POINTER_IDX]] = tape[param[TAPE_POINTER_IDX]];
+                    param[OUTPUT_POINTER_IDX]++;
+                    break;
+
+                case ',':
+                    if(param[INPUT_POINTER_IDX]==param[INPUT_END_IDX]){
+                        printf("more input needed:");
+                        fgets(input+param[INPUT_END_IDX], 1000, stdin);
+                        while(input[param[INPUT_END_IDX]]!=0){
+                            param[INPUT_END_IDX]++;
                         }
                     }
-                }
-                break;
+                    tape[param[TAPE_POINTER_IDX]] = input[param[INPUT_POINTER_IDX]];
+                    param[INPUT_POINTER_IDX]++;
+                    break;
 
-            case ']':
-                if (tape[param[TAPE_POINTER_IDX]] != 0)
-                {
-                    loopstack = -1;
-                    while (loopstack != 0)
+                case '[':
+                    if (tape[param[TAPE_POINTER_IDX]] == 0)
                     {
-                        param[CODE_POINTER_IDX]--;
-                        if (code[param[CODE_POINTER_IDX]] == '[')
+                        loopstack = 1;
+                        while (loopstack != 0)
                         {
-                            loopstack++;
-                        }
-                        if (code[param[CODE_POINTER_IDX]] == ']')
-                        {
-                            loopstack--;
-                        }
-                        if (code[param[CODE_POINTER_IDX]] == '\n')
-                        {
-                            param[CURR_LINE_NUM]--;
-                            param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
-                            while(code[param[CURR_LINE_START_IDX-1]!='\n']&&param[CURR_LINE_START_IDX]!=0)
+                            param[CODE_POINTER_IDX]++;
+                            if (code[param[CODE_POINTER_IDX]] == '[')
                             {
-                                param[CURR_LINE_START_IDX]--;
+                                loopstack++;
+                            }
+                            if (code[param[CODE_POINTER_IDX]] == ']')
+                            {
+                                loopstack--;
+                            }
+                            if (code[param[CODE_POINTER_IDX]-1] == '\n')
+                            {
+                                param[CURR_LINE_NUM]++;
+                                param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
                             }
                         }
                     }
-                }
-                break;
-
-            default:
-                break;
-            }
-
-            do
-            {
-                param[CODE_POINTER_IDX]++;
-                if (param[CODE_POINTER_IDX] == param[CODE_END_IDX])
-                {
-                    param[MODE] = EXIT;
                     break;
-                }
-                if (code[param[CODE_POINTER_IDX] - 1] == '\n')
-                {
-                    param[CURR_LINE_NUM]++;
-                    param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
-                }
-            } while (!isbfcode(code[param[CODE_POINTER_IDX]]));
-            param[STEP_COUNT]++;
-            if (param[MODE]==EXIT)
-            {
-                break;
-            }
-        }
-    }
-    if (command_direction==BACKWARD)
-    {
-        for (i = 0; i < command.num_value; i++)
-        {
-            loopstack=0;
 
-            do
-            {
-                param[CODE_POINTER_IDX]--;
-                if (param[CODE_POINTER_IDX] == 0)
-                {
-                    //TODO:change to just stop
-                    param[MODE] = EXIT;
-                    break;
-                }
-                if (code[param[CODE_POINTER_IDX]] == '\n')
-                {
-                    param[CURR_LINE_NUM]--;
-                    param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
-                    while(code[param[CURR_LINE_START_IDX-1]!='\n']&&param[CURR_LINE_START_IDX]!=0)
+                case ']':
+                    if (tape[param[TAPE_POINTER_IDX]] != 0)
                     {
-                        param[CURR_LINE_START_IDX]--;
-                    }
-                }
-            } while (!isbfcode(code[param[CODE_POINTER_IDX]]));
-
-            switch (code[param[CODE_POINTER_IDX]])
-            {
-            case '+':
-                tape[param[TAPE_POINTER_IDX]]++;
-                break;
-
-            case '-':
-                tape[param[TAPE_POINTER_IDX]]--;
-                break;
-
-            case '>':
-                if (param[TAPE_POINTER_IDX] > 0)
-                {
-                    param[TAPE_POINTER_IDX]--;
-                }
-                break;
-
-            case '<':
-                param[TAPE_POINTER_IDX]++;
-                break;
-
-            case '.':
-                output[param[OUTPUT_POINTER_IDX]] = 0;
-                param[OUTPUT_POINTER_IDX]--;
-                break;
-
-            case ',':
-                //TODO: choose between forgeting or keeping past inputs
-                //TODO: save overwritten spaces
-                param[INPUT_POINTER_IDX]--;
-                break;
-
-            case '[':
-                //TODO: add loop cycle tracker
-                if (tape[param[TAPE_POINTER_IDX]] == 0)
-                {
-                    loopstack = 1;
-                    while (loopstack != 0)
-                    {
-                        param[CODE_POINTER_IDX]++;
-                        if (code[param[CODE_POINTER_IDX]] == '[')
+                        loopstack = -1;
+                        while (loopstack != 0)
                         {
-                            loopstack++;
-                        }
-                        if (code[param[CODE_POINTER_IDX]] == ']')
-                        {
-                            loopstack--;
-                        }
-                        if (code[param[CODE_POINTER_IDX]-1] == '\n')
-                        {
-                            param[CURR_LINE_NUM]++;
-                            param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
-                        }
-                    }
-                }
-                break;
-
-            case ']':
-                if (tape[param[TAPE_POINTER_IDX]] != 0)
-                {
-                    loopstack = -1;
-                    while (loopstack != 0)
-                    {
-                        param[CODE_POINTER_IDX]--;
-                        if (code[param[CODE_POINTER_IDX]] == '[')
-                        {
-                            loopstack++;
-                        }
-                        if (code[param[CODE_POINTER_IDX]] == ']')
-                        {
-                            loopstack--;
-                        }
-                        if (code[param[CODE_POINTER_IDX]] == '\n')
-                        {
-                            param[CURR_LINE_NUM]--;
-                            param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
-                            while(code[param[CURR_LINE_START_IDX-1]!='\n']&&param[CURR_LINE_START_IDX]!=0)
+                            param[CODE_POINTER_IDX]--;
+                            if (code[param[CODE_POINTER_IDX]] == '[')
                             {
-                                param[CURR_LINE_START_IDX]--;
+                                loopstack++;
+                            }
+                            if (code[param[CODE_POINTER_IDX]] == ']')
+                            {
+                                loopstack--;
+                            }
+                            if (code[param[CODE_POINTER_IDX]] == '\n')
+                            {
+                                param[CURR_LINE_NUM]--;
+                                param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
+                                while(code[param[CURR_LINE_START_IDX-1]!='\n']&&param[CURR_LINE_START_IDX]!=0)
+                                {
+                                    param[CURR_LINE_START_IDX]--;
+                                }
                             }
                         }
                     }
+                    break;
+
+                default:
+                    break;
                 }
-                break;
 
-            default:
-                break;
-            }
-
-            if (param[MODE]==EXIT)
-            {
-                break;
+                do
+                {
+                    param[CODE_POINTER_IDX]++;
+                    if (param[CODE_POINTER_IDX] == param[CODE_END_IDX])
+                    {
+                        param[MODE] = EXIT;
+                        break;
+                    }
+                    if (code[param[CODE_POINTER_IDX] - 1] == '\n')
+                    {
+                        param[CURR_LINE_NUM]++;
+                        param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
+                    }
+                } while(!isbfcode(code[param[CODE_POINTER_IDX]]));
+                param[STEP_COUNT]++;
+                if (param[MODE]==EXIT)
+                {
+                    break;
+                }
             }
         }
-    }
-    
-    if(exitflag>0){
-        param[MODE]=EXIT;
+        if (command_direction==BACKWARD)
+        {
+            for (i = 0; i < command->num_value; i++)
+            {
+                loopstack=0;
+
+                do
+                {
+                    param[CODE_POINTER_IDX]--;
+                    if (param[CODE_POINTER_IDX] == 0)
+                    {
+                        //TODO:change to just stop
+                        param[MODE] = EXIT;
+                        break;
+                    }
+                    if (code[param[CODE_POINTER_IDX]] == '\n')
+                    {
+                        param[CURR_LINE_NUM]--;
+                        param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
+                        while(code[param[CURR_LINE_START_IDX-1]!='\n']&&param[CURR_LINE_START_IDX]!=0)
+                        {
+                            param[CURR_LINE_START_IDX]--;
+                        }
+                    }
+                } while (!isbfcode(code[param[CODE_POINTER_IDX]]));
+
+                switch (code[param[CODE_POINTER_IDX]])
+                {
+                case '+':
+                    tape[param[TAPE_POINTER_IDX]]++;
+                    break;
+
+                case '-':
+                    tape[param[TAPE_POINTER_IDX]]--;
+                    break;
+
+                case '>':
+                    if (param[TAPE_POINTER_IDX] > 0)
+                    {
+                        param[TAPE_POINTER_IDX]--;
+                    }
+                    break;
+
+                case '<':
+                    param[TAPE_POINTER_IDX]++;
+                    break;
+
+                case '.':
+                    output[param[OUTPUT_POINTER_IDX]] = 0;
+                    param[OUTPUT_POINTER_IDX]--;
+                    break;
+
+                case ',':
+                    //TODO: choose between forgeting or keeping past inputs
+                    //TODO: save overwritten spaces
+                    param[INPUT_POINTER_IDX]--;
+                    break;
+
+                case '[':
+                    //TODO: add loop cycle tracker
+                    if (tape[param[TAPE_POINTER_IDX]] == 0)
+                    {
+                        loopstack = 1;
+                        while (loopstack != 0)
+                        {
+                            param[CODE_POINTER_IDX]++;
+                            if (code[param[CODE_POINTER_IDX]] == '[')
+                            {
+                                loopstack++;
+                            }
+                            if (code[param[CODE_POINTER_IDX]] == ']')
+                            {
+                                loopstack--;
+                            }
+                            if (code[param[CODE_POINTER_IDX]-1] == '\n')
+                            {
+                                param[CURR_LINE_NUM]++;
+                                param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
+                            }
+                        }
+                    }
+                    break;
+
+                case ']':
+                    if (tape[param[TAPE_POINTER_IDX]] != 0)
+                    {
+                        loopstack = -1;
+                        while (loopstack != 0)
+                        {
+                            param[CODE_POINTER_IDX]--;
+                            if (code[param[CODE_POINTER_IDX]] == '[')
+                            {
+                                loopstack++;
+                            }
+                            if (code[param[CODE_POINTER_IDX]] == ']')
+                            {
+                                loopstack--;
+                            }
+                            if (code[param[CODE_POINTER_IDX]] == '\n')
+                            {
+                                param[CURR_LINE_NUM]--;
+                                param[CURR_LINE_START_IDX] = param[CODE_POINTER_IDX];
+                                while(code[param[CURR_LINE_START_IDX-1]!='\n']&&param[CURR_LINE_START_IDX]!=0)
+                                {
+                                    param[CURR_LINE_START_IDX]--;
+                                }
+                            }
+                        }
+                    }
+                    break;
+
+                default:
+                    break;
+                }
+
+                if (param[MODE]==EXIT)
+                {
+                    break;
+                }
+            }
+        }
+        
+        param[COMMAND_POINTER_IDX]++;
     }
 }
 
 void makedefaultcommandstrt(commandstrt *cmdp, int *param){
-    cmdp=(commandstrt *)malloc(sizeof(commandstrt));
     cmdp->sign=param[DIRECTION];
     cmdp->field=param[FIELD];
-    cmdp->cmd='';
+    cmdp->cmd='d';
     cmdp->num_value=0;
     strcpy(cmdp->str_value, "");
 }
