@@ -15,6 +15,7 @@
 // ---> non command letters: invalid letters that are ignored. can be used to space out commands in one line
 // ---> parsing - command is divided by +/-, numbers, and each command letter.
 //                combining takes priority unless seperated by non command letters
+// ---> maybe make +num absolute address?
 // ---> command letters -----
 //  #: set breakpoint at current position to stop at. next command to cross stops at breakpoint, when used at execution, stops when tape pointer is at value matching condition, for tape, execution, can take positive number and special command letters for conditions, =/!: (is/not) equal, >/<: larger/smaller, just numbers is equal, can add multiple breakpoints, for multiple conditions, will first do AND, then OR, no option can erase existing breakpoints
 //  a: auto moves one step at a time, takes number, no number autos until end or interupt by input, when interupted, will stop and not move a step
@@ -29,6 +30,7 @@
 //  Z: redo next command
 //  s: change settings, only takes format of {setting_name:value,}, writing default as value sets to default, just {default} defaults all, no {} sends to setting page
 //  v: change tape visual, takes some numbers, no number cycles through options, 1 will show in base 16, 2 will show in chars, other is default
+//  r: reload code, takes some numbers, defaults to starting over, 
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -135,19 +137,18 @@ int main()
     char *inputend = input;
     char *codep = bfcode;
     char *codepend = bfcode;
-    char fn[100];
+    char fn[100]={0};
     char c;
     int paramarr[PARAM_SIZE]={0};
     int loopflag = 0;
     int i, j;
     
     printf("file name:\n");
-    gets(fn);
-    fflush(stdin);
+    fgets(fn, 100, stdin);
+    *(strchr(fn, '\n'))='\0';
 
     printf("input:\n");
     fgets(input, 1000, stdin);
-    fflush(stdin);
     while(*inputend!=0){
         inputend=inputend+1;
     }
@@ -480,162 +481,115 @@ void takecommand(int *param, commandstrt *cmdarr)
     int i;
     char c;
     char commandstr[1000]={0};
-    char *bracketstartp=commandstr;
-    char *bracketendp=commandstr;
-    char *letterp=commandstr;
-    char *nump=commandstr;
+    char *p=commandstr;
+    char *q=commandstr;
     commandstrt* command=&cmdarr[param[COMMAND_POINTER_IDX]];
-    int scancheck;
-    char cmd_letters[]="#amtcipeqzZsv";
-    char start_letters[]="\'\"({";
-    char end_letters[]="\'\")}";
+    char cmd_letters[]="#amtcipeqzZsvr";
     char condition_letters[]="=!<>";
     char number_letters[]="+-0123456789";
-    int bracket_moveflag=1;
-    int letter_moveflag=1;
-    int num_moveflag=1;
 
     fgets(commandstr, 1000, stdin);
-    while (1)
+    makedefaultcommandstrt(command, param);
+    while (p-commandstr<strlen(commandstr))
     {
         if(*commandstr=='\n'){
-            makedefaultcommandstrt(command,param);
             command->num_value=1;
             command++;
             param[COMMAND_END_IDX]++;
             break;
         }
 
-        if(bracket_moveflag){
-            if(strchr(start_letters, *bracketstartp)){
-                makedefaultcommandstrt(command, param);
-                command->cmd=*bracketendp;
-                strncpy(command->str_value, bracketstartp, bracketendp-bracketstartp);
-                command++;
-                param[COMMAND_END_IDX]++;
-                bracketendp++;
-                bracketstartp=bracketendp;
-            }
-            
-            bracketstartp=strpbrk(bracketstartp, start_letters);
-            while(bracketstartp!=NULL){
-                bracketendp=strchr(bracketstartp, end_letters[strchr(start_letters, *bracketstartp)-start_letters]);
-                if(bracketendp!=NULL){
-                    bracketendp++;
-                    if((*bracketstartp=='\'' || *bracketstartp=='\"') && *bracketendp=='e'){
-                        break;
-                    }
-                    if(*bracketstartp=='{' && *bracketendp=='s'){
-                        break;
-                    }
+        if(*p=='{'){
+            q=p+1;
+            while(q-commandstr<strlen(commandstr)){
+                if(*q=='}' && *(q+1)=='s'){
+                    break;
                 }
-
-                bracketstartp=strpbrk(bracketstartp, start_letters);
+                q++;
             }
-            bracket_moveflag=0;
-            if(letterp!=NULL){
-                letter_moveflag=1;
+            if(*q=='}' && *(q+1)=='s'){
+                command->cmd='s';
+                *q='\0';
+                strcpy(command->str_value, p+1);
+                *q='}';
+                p=q+1;
             }
-            if(nump!=NULL){
-                num_moveflag=1;
+        }
+        else if(*p=='"'){
+            q=p+1;
+            while(q-commandstr<strlen(commandstr)){
+                if(*q=='"' && *(q+1)=='e'){
+                    break;
+                }
+                q++;
             }
+            if(*q=='"' && *(q+1)=='e'){
+                command->cmd='e';
+                *q='\0';
+                strcpy(command->str_value, p+1);
+                *q='"';
+                p=q+1;
+            }
+        }
+        else if(strchr(number_letters, *p)){
+            q=p+1;
+            while(q-commandstr<strlen(commandstr)){
+                if(!isdigit(*q)){
+                    break;
+                }
+                q++;
+            }
+            if((*p=='+' || *p=='-') && *(p+1)=='a'){
+                command->cmd=*(p+1);
+                command->str_value[0]=*p;
+                command->str_value[1]='\0';
+                p++;
+            }
+            else if(isdigit(*(q-1)) && strchr(condition_letters, *q) && *(q+1)=='#'){
+                command->cmd='#';
+                command->str_value[0]=*q;
+                command->str_value[1]='\0';
+                *q='\0';
+                command->num_value=atoi(p);
+                *q=command->str_value[0];
+                p=q+1;
+            }
+            else if(strchr("#amtcpv", *q) && isdigit(*(q-1))){
+                command->cmd=*q;
+                *q='\0';
+                command->num_value=atoi(p);
+                *q=command->cmd;
+                p=q;
+            }
+            else if((*p=='+' || *p=='-') && p+1==q){
+                command->cmd='d';
+                command->str_value[0]=*p;
+                command->str_value[1]='\0';
+            }
+            else{
+                command->cmd=*q;
+                *q='\0';
+                command->num_value=atoi(p);
+                *q=command->cmd;
+                command->cmd='d';
+                p=q-1;
+            }
+        }
+        else if(strchr(cmd_letters, *p)){
+            command->cmd=*p;
+            if(command->cmd=='#'){
+                command->str_value[0]='#';
+                command->str_value[1]='\0';
+            }
+        }
+        p++;
+        if(!isblank(command->cmd)){
+            command++;
+            makedefaultcommandstrt(command, param);
+            param[COMMAND_END_IDX]++;
         }
         
-        if(letter_moveflag){
-            if(strchr(cmd_letters, *letterp) && !(bracketstartp<=letterp && letterp<=bracketendp)){
-                makedefaultcommandstrt(command, param);
-                command->cmd=*letterp;
-                if(*letterp=='#' && strchr(condition_letters, *(letterp-1))){
-                    command->str_value[0]=*(letterp-1);
-                    command->str_value[1]='\0';
-                }
-                command++;
-                param[COMMAND_END_IDX]++;
-                letterp++;
-            }
-
-            letterp=strpbrk(letterp, cmd_letters);
-            while(bracketstartp<=letterp && letterp<=bracketendp && letterp!=NULL){
-                bracket_moveflag=1;
-                letterp=strpbrk(letterp, cmd_letters);
-            }
-            letter_moveflag=0;
-            if(nump!=NULL){
-                num_moveflag=1;
-            }
-        }
-
-        if(num_moveflag){
-            nump=strpbrk(nump, number_letters);
-            while(nump!=NULL){
-                if(nump>letterp && letterp!=NULL){
-                    letter_moveflag=1;
-                    break;
-                }
-                if(nump>bracketstartp && bracketstartp!=NULL){
-                    while(bracketstartp<nump && nump<bracketendp && nump!=NULL){
-                        nump++;
-                        nump=strpbrk(nump, number_letters);
-                    }
-                    if(bracketstartp!=NULL){
-                        bracket_moveflag=1;
-                    }
-                    break;
-                }
-                makedefaultcommandstrt(command, param);
-                if((*nump=='+' || *nump=='-') && !isdigit(*(nump+1))){
-                    command->cmd=*nump;
-                }
-                if(((*nump=='+' || *nump=='-') && isdigit(*(nump+1))) || isdigit(*nump)){
-                    command->num_value=atoi(nump);
-                }
-
-                while(isdigit(*(nump+1))){
-                    nump++;
-                }
-                nump++;
-                if(strpbrk(nump, "#amtcpev")!=NULL && isdigit(*(nump-1))){
-                    command->cmd=*nump;
-                    num_moveflag=0;
-                    if(letterp!=NULL){
-                        letter_moveflag=1;
-                    }
-                    letterp++;
-                    break;
-                }
-                if(strpbrk(nump, condition_letters)!=NULL && isdigit(*(nump-1)) && *(nump+1)=='#'){
-                    command->cmd=*(nump+1);
-                    command->str_value[0]=*nump;
-                    command->str_value[1]='\0';
-                    num_moveflag=0;
-                    if(letterp!=NULL){
-                        letter_moveflag=1;
-                    }
-                    letterp++;
-                    break;
-                }
-
-                param[COMMAND_END_IDX]++;
-                command++;
-                nump=strpbrk(nump, number_letters);
-            }
-
-            if(nump==NULL){
-                if(letterp<bracketstartp && letterp!=NULL){
-                    letter_moveflag=1;
-                }
-                else if(bracketstartp!=NULL){
-                    bracket_moveflag=1;
-                }
-            }
-            num_moveflag=0;
-        }
-        
-        if(bracketstartp==NULL && letterp==NULL && nump==NULL){
-            break;
-        }
     }
-
 }
 
 void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *input, char *output)
@@ -811,6 +765,7 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
                 }
             }
         }
+
         if (command_direction==BACKWARD)
         {
             for (i = 0; i < command->num_value; i++)
@@ -940,7 +895,7 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
 void makedefaultcommandstrt(commandstrt *cmdp, int *param){
     cmdp->sign=param[DIRECTION];
     cmdp->field=param[FIELD];
-    cmdp->cmd='d';
+    cmdp->cmd=' ';
     cmdp->num_value=0;
     strcpy(cmdp->str_value, "");
 }
