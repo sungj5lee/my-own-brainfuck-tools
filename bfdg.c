@@ -64,6 +64,7 @@ enum param
     MODE,
     DIRECTION,
     FIELD,
+    CODE_START_LINE_NUM,
     CODE_POINTER_IDX,
     CODE_END_IDX,
     TAPE_POINTER_IDX,
@@ -113,7 +114,7 @@ typedef enum field
 } field_enum;
 
 int isbfcode(char);
-void arrayimagemovementhandler(int *, int, int);
+void arrayimagemovementhandler(int *, int, int, int);
 void makedefaultcommandstrt(commandstrt *, int *);
 void drawcode(int *, char *);
 void drawtape(int *,unsigned char *);
@@ -193,7 +194,7 @@ int main()
     paramarr[CURR_LINE_NUM] = 1;
 
     codep = bfcode;
-    while (!isbfcode(*codep))
+    while (!isbfcode(*codep) && !(codep==codepend))
     {
         codep = codep + 1;
         if(*(codep-1)=='\n'){
@@ -205,7 +206,10 @@ int main()
     if (codep == codepend)
     {
         paramarr[MODE] = EXIT;
+        paramarr[CURR_LINE_NUM]=1;
+        paramarr[CURR_LINE_START_IDX]=0;
     }
+    paramarr[CODE_START_LINE_NUM]=paramarr[CURR_LINE_NUM];
 
     while (paramarr[MODE] != EXIT && paramarr[FIELD]==EXECUTE)
     {
@@ -254,38 +258,73 @@ void drawcode(int *param, char *code)
     int i;
     int codepos = param[CODE_POINTER_IDX];
     int codeendpos = param[CODE_END_IDX];
-    int linenum = param[CURR_LINE_NUM];
-    int linestartnum = param[CURR_LINE_START_IDX];
+    int currlinenum = param[CURR_LINE_NUM];
+    int currlinestartpos = param[CURR_LINE_START_IDX];
     int codewindowlen=5;
-    char *p = code + linestartnum;
+    param[CODE_START_LINE_NUM]--;
+    arrayimagemovementhandler(&param[CODE_START_LINE_NUM], codewindowlen, currlinenum-1, 1);
+    param[CODE_START_LINE_NUM]++;
+    int codestartlinenum=param[CODE_START_LINE_NUM];
+    int linenum;
+    char *p = code+currlinestartpos;
+    char highlightchars[2]="{}";
+    char pointerchar='^';
 
+    if(codestartlinenum+codewindowlen-1<=currlinenum+1){
+        codestartlinenum++;
+    }
+    i=0;
+    while(codestartlinenum!=currlinenum-i){
+        p--;
+        if(*p=='\n'){
+            i++;
+        }
+    }
+    while(p!=code && *(p-1)!='\n'){
+        p--;
+    }
+
+    linenum=codestartlinenum;
     for (i = 0; i < codewindowlen; i++)
     {
-        if (p - code < codeendpos && i == 0)
-        {
-            printf("%d\t", linenum + i);
+        if(p-code<codeendpos){
+            if(codestartlinenum+i==currlinenum+1){
+                printf("\t");
+                p=code+codepos;
+                while(*p!='\n' && p!=code){
+                    p--;
+                    printf(" ");
+                }
+                printf("%c", pointerchar);
+
+                p=code+codepos;
+                while(*p!='\n'){
+                    p++;
+                }
+                p++;
+            }
+            else{
+                printf("%d\t", linenum);
+                while(*p!='\n'){
+                    if(p-code==codepos){
+                        printf("%c%c%c", highlightchars[0], *p, highlightchars[1]);
+                    }
+                    else{
+                        printf("%c", *p);
+                    }
+                    p++;
+                }
+                p++;
+                linenum++;
+            }
         }
-        else if (*p == '\n')
-        {
-            printf("%d\t", linenum + i);
-            p = p + 1;
-        }
-        while (p - code < codeendpos && *p != '\n')
-        {
-            if (p - code == codepos)
-                printf("{%c}", *p);
-            else
-                printf("%c", *p);
-            p = p + 1;
-        }
+        
         printf("\n");
     }
 }
 
-void arrayimagemovementhandler(int *arrstart, int arrl, int ppos)
+void arrayimagemovementhandler(int *arrstart, int arrl, int ppos, int buffer)
 {
-    int buffer=1;
-
     if(ppos<0+buffer){
         *arrstart=0;
     }
@@ -300,7 +339,7 @@ void arrayimagemovementhandler(int *arrstart, int arrl, int ppos)
 void drawtape(int *param, unsigned char *tape)
 {
     int tapelen=30;
-    arrayimagemovementhandler(&param[TAPE_START_IDX], tapelen, param[TAPE_POINTER_IDX]);
+    arrayimagemovementhandler(&param[TAPE_START_IDX], tapelen, param[TAPE_POINTER_IDX], 2);
 
     int tapepos = param[TAPE_POINTER_IDX];
     int tapenum = param[TAPE_START_IDX];
