@@ -16,9 +16,10 @@
 // ---> parsing - command is divided by +/-, numbers, and each command letter.
 //                combining takes priority unless seperated by non command letters
 // ---> maybe make +num absolute address?
+// ---> number(commands) executes repeated commands
 // ---> command letters -----
-//  #: set breakpoint at current position to stop at. next command to cross stops at breakpoint, when used at execution, stops when tape pointer is at value matching condition, for tape, execution, can take positive number and special command letters for conditions, =/!: (is/not) equal, >/<: larger/smaller, just numbers is equal, can add multiple breakpoints, for multiple conditions, will first do AND, then OR, no option can erase existing breakpoints
-//  a: auto moves one step at a time, takes number, no number autos until end or interupt by input, when interupted, will stop and not move a step
+//  #: set breakpoint at current position to stop at. next command to cross stops at breakpoint, when used at execution, stops when tape pointer is at value matching condition, for tape, execution, can take positive number and special command letters for conditions, =/!: (is/not) equal, >/<: larger/smaller, just numbers is equal, can add multiple breakpoints, for multiple conditions, will first find any overlap, then add non overlapped breakpoints, no option can erase existing breakpoints
+//  a: auto moves some steps at a time, takes up to three numbers, no number autos until end or interupt by input, when interupted, will stop and not move a step, multiple numbers need to be in (), numbers are in order of, length, step size, wait time, time is seconds, can be decimals, length or step size as 0 will just stay in place
 //  m: move to a certain step, takes number, resets to start if no number, starts from end if negative
 //  t: move focus to tape, takes some numbers, 1 will only move to non null spaces, other is default
 //  c: move focus to code, takes some numbers, 1 will move by lines, 2 will only move to brainfuck chars, other is default
