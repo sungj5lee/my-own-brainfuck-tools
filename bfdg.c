@@ -221,7 +221,7 @@ int main()
         drawin(paramarr, input);
         drawout(paramarr, output);
         drawcommand(paramarr);
-        // //continue, forward, backward, exit, run, change tape data format, change tape, handle lack of input
+        //continue, forward, backward, exit, run, change tape data format, change tape, handle lack of input
         takecommand(paramarr, cmdhistory);
         docommand(cmdhistory, paramarr, bfcode, tape, input, output, inputoverride, loopcyclerecord);
         // break;
@@ -534,6 +534,7 @@ void takecommand(int *param, commandstrt *cmdarr)
     {
         if(*commandstr=='\n'){
             command->num_value=1;
+            command->cmd='d';
             command++;
             param[COMMAND_END_IDX]++;
             break;
@@ -679,7 +680,7 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
 
             if (command_direction==FORWARD)
             {
-                for (i = 0; i < command->num_value; i++)
+                for (i = 0; i < abs(command->num_value); i++)
                 {
                     loopstack=0;
 
@@ -745,6 +746,8 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
                                 }
                             }
                         }
+
+                        param[LOOP_CYCLE_POINTER_IDX]++;
                         break;
 
                     case ']':
@@ -772,8 +775,9 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
                                     }
                                 }
                             }
-                            param[CODE_POINTER_IDX]++;
                         }
+
+                        loopcycle[param[LOOP_CYCLE_POINTER_IDX]]++;
                         break;
 
                     default:
@@ -804,7 +808,7 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
 
             if (command_direction==BACKWARD)
             {
-                for (i = 0; i < command->num_value; i++)
+                for (i = 0; i < abs(command->num_value); i++)
                 {
                     loopstack=0;
 
@@ -854,12 +858,13 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
 
                     case ',':
                         //TODO: choose between forgeting or keeping past inputs
-                        //TODO: save overwritten spaces
                         param[INPUT_POINTER_IDX]--;
+                        tape[param[TAPE_POINTER_IDX]]=inputoverwrite[param[INPUT_OVERRIDE_POINTER_IDX]];
+                        inputoverwrite[param[INPUT_OVERRIDE_POINTER_IDX]]=0;
+                        param[INPUT_OVERRIDE_POINTER_IDX]--;
                         break;
 
                     case '[':
-                        //TODO: add loop cycle tracker
                         if (tape[param[TAPE_POINTER_IDX]] == 0)
                         {
                             loopstack = 1;
@@ -881,6 +886,8 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
                                 }
                             }
                         }
+
+                        param[LOOP_CYCLE_POINTER_IDX]--;
                         break;
 
                     case ']':
@@ -908,13 +915,19 @@ void docommand(commandstrt *cmdarr, int *param, char *code, char *tape, char *in
                                     }
                                 }
                             }
+                            param[CODE_POINTER_IDX]++;
                         }
+
+                        loopcycle[param[LOOP_CYCLE_POINTER_IDX]]--;
                         break;
 
                     default:
                         break;
                     }
 
+                    if(param[STEP_COUNT]>0){
+                        param[STEP_COUNT]--;
+                    }
                     if (param[MODE]==EXIT)
                     {
                         break;
